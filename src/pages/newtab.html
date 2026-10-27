@@ -109,7 +109,7 @@ function show(i) {
   const im = new Image(); im.onload = () => {
     if (list[idx] !== it) return; crossfade(url, !best(it)); $('#fallback').style.opacity = 0;
     const now = $('#now'); now.hidden = false;
-    now.innerHTML = `<small>${it.status === 'watching' ? 'Currently watching' : 'Watched'}${it.rating ? ' · ★ ' + it.rating : ''}</small><b>${K.esc(it.title)}</b><div class="meta"><span class="st">${it.status === 'watching' ? 'Watching' : 'Watched'}</span>${it.score ? '<span>AniList ' + it.score + '%</span>' : ''}<a class="go" href="${K.esc(it.watchUrl)}">${/anilist\.co/.test(it.watchUrl) ? 'View on AniList' : 'Watch on Aniwatch'}</a></div>`;
+    now.innerHTML = `<small>${it.status === 'watching' ? 'Currently watching' : it.status === 'towatch' ? 'On your list' : 'Watched'}${it.rating ? ' · ★ ' + it.rating : ''}</small><b>${K.esc(it.title)}</b><div class="meta"><span class="st">${it.status === 'watching' ? 'Watching' : it.status === 'towatch' ? 'To watch' : 'Watched'}</span>${it.score ? '<span>AniList ' + it.score + '%</span>' : ''}<a class="go" href="${K.esc(it.watchUrl)}">${/anilist\.co/.test(it.watchUrl) ? 'View on AniList' : 'Watch on Aniwatch'}</a></div>`;
     if (it.color) call('accent.set', it.color);
   };
   im.onerror = () => { list.splice(idx, 1); show(idx); }; im.src = url;
@@ -117,14 +117,19 @@ function show(i) {
   const nx = list[(idx + 1) % list.length]; if (nx && !nx.custom) { const p = new Image(); p.src = best(nx) || nx.cover || ''; }
   clearTimeout(timer); if (!paused && list.length > 1) timer = setTimeout(() => show(idx + 1), (S.bgInterval || 30) * 1000);
 }
+async function loadCW() {
+  if (S.kirokuNewtab === false) return;
+  try { const lw = await call('kn.watching'); if (lw && lw.length) { $('#watching h3').textContent = 'Continue watching'; $('#watching').hidden = false; $('#watching').dataset.live = '1'; $('#wrow').innerHTML = lw.filter(x => x.cover).slice(0, 7).map((x, i) => { const p = x.progress || {}; return `<a class="cw" href="${K.esc(x.resume || '#')}" data-t="${K.esc(x.title + (p.episode != null ? ' · Ep ' + p.episode : ''))}" style="animation-delay:${.4 + i * .07}s"><img src="${K.esc(x.cover)}" loading="lazy">${p.pct != null ? `<i style="position:absolute;left:0;bottom:0;height:4px;width:${Math.max(3, Math.min(100, p.pct))}%;background:var(--accent);z-index:2"></i>` : ''}</a>`; }).join(''); } } catch (_) {}
+}
 async function loadBg() {
-  if (!S.bgKiroku && S.bgMode !== 'mine' && !String(S.theme).startsWith('custom:')) { call('accent.set', null); return; }
+  if (!S.bgKiroku && S.bgMode !== 'mine' && !String(S.theme).startsWith('custom:')) { call('accent.set', null); loadCW(); return; }
   try { list = (await call('kiroku.bg')).filter(x => best(x) || x.cover); } catch (_) { list = []; }
   const withBanner = list.filter(best), rest = list.filter(x => !best(x));
   list = withBanner.concat(rest.slice(0, 4));
   if (list.length) show(0);
-  const w = list.filter(x => !x.custom && x.status === 'watching' && x.cover).slice(0, 7);
-  if (w.length) { $('#watching').hidden = false; $('#wrow').innerHTML = w.map((x, i) => `<a class="cw" href="${K.esc(x.watchUrl)}" data-t="${K.esc(x.title)}" style="animation-delay:${.4 + i * .07}s"><img src="${K.esc(x.cover)}" loading="lazy"></a>`).join(''); }
+  let w = list.filter(x => !x.custom && x.status === 'watching' && x.cover).slice(0, 7);
+  await loadCW();
+  if (w.length && !$('#watching').dataset.live) { $('#watching').hidden = false; $('#wrow').innerHTML = w.map((x, i) => `<a class="cw" href="${K.esc(x.watchUrl)}" data-t="${K.esc(x.title)}" style="animation-delay:${.4 + i * .07}s"><img src="${K.esc(x.cover)}" loading="lazy"></a>`).join(''); }
 }
 function fx() { stopFx(); const t = K.particleType(); stopFx = Particles.start($('#fx'), t); }
 
@@ -135,6 +140,7 @@ function fx() { stopFx(); const t = K.particleType(); stopFx = Particles.start($
   tick(); setInterval(tick, 10000); dial(); loadBg(); fx();
   document.addEventListener('k:applied', fx);
   document.addEventListener('k:settings', e => { S = e.detail; $('#eng').textContent = (st.engines[S.searchEngine] || {}).name || ''; dial(); });
+  kitsune.on('kirokuLive', () => loadCW());
   kitsune.on('kiroku', async () => { if (!list.length) return loadBg(); try { const fresh = await call('kiroku.bg'); if (fresh.length !== list.length && !fresh.every(f => list.some(x => x.id === f.id))) return loadBg(); for (const f of fresh) { const o = list.find(x => x.id === f.id); if (o) { o.hd = f.hd; o.cover = f.cover; } } } catch (_) { loadBg(); } });
   $('#sf').addEventListener('submit', e => { e.preventDefault(); const v = $('#q').value.trim(); if (v) call('cmd', 'navigate', v); });
   $('#next').onclick = () => show(idx + 1); $('#prev').onclick = () => show(idx - 1); $('#bgs').innerHTML = I.palette; $('#bgs').onclick = () => { location.href = 'kitsune://backgrounds/'; }; $('#hide').onclick = () => document.body.classList.toggle('hideui');

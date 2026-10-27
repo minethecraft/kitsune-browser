@@ -64,6 +64,7 @@ function setup(ses, hooks) {
   ses.webRequest.onHeadersReceived((d, cb) => { if (S.get().blocker !== 'off' && blocker.ready()) blocker.onHeadersReceived(d, cb); else cb({}); });
   blocker.attachPreload(ses);
   if (!demo.on) { try { ses.registerPreloadScript({ type: 'frame', filePath: require('path').join(__dirname, 'fill-preload.js') }); } catch (_) {} }
+  if (!demo.on && ses.isPersistent()) { try { ses.registerPreloadScript({ type: 'frame', filePath: require('path').join(__dirname, 'kiroku-preload.js') }); } catch (_) {} }
   if (demo.on) ses.on('will-download', e => e.preventDefault());
   try { require('./vpn').applyTo(ses); require('./extensions').attach(ses); } catch (_) {}
 

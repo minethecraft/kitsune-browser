@@ -1,7 +1,7 @@
 {
   "name": "kitsune-browser",
   "productName": "Kitsune",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Kitsune \u2014 a light, animated, anime-themed browser inspired by Opera and Firefox.",
   "author": "Mr. Vibe",
   "main": "src/main/main.js",

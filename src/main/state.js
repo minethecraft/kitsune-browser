@@ -64,7 +64,10 @@ const DEFAULTS = {
   batterySaver: true,             // auto-reduce animation on battery
   downloadDir: '',
   customAnilistIds: [],
-  kirokuUrl: '',
+  kirokuUrl: 'https://kiroku.zeabur.app',
+  kirokuConnected: false,
+  kirokuTrack: true,               // report what I watch on the six supported streaming sites (when connected)
+  kirokuNewtab: true,              // show Continue watching with live progress on the new tab
   sidebarOn: true,
   zoomDefault: 0,
   updateServer: '',               // blank = same server as the account server

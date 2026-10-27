@@ -19,8 +19,10 @@ const api = { onHd: null };
 const QUERY = `query($ids:[Int],$p:Int){Page(page:$p,perPage:50){media(id_in:$ids,type:ANIME){
   id title{romaji english native} bannerImage coverImage{extraLarge large color} genres isAdult averageScore episodes seasonYear format }}}`;
 
+let live = null;   // live Kiroku library (when connected): [{id: anilistId, t, s, r}]
+function setLive(items) { live = items && items.length ? items : null; }
 function library(settings) {
-  const base = override.data.items || bundled.items;
+  const base = (settings.bgKiroku !== false && live) ? live : (override.data.items || bundled.items);
   const extra = (settings.customAnilistIds || []).filter(n => Number.isInteger(n))
     .filter(id => !base.some(b => b.id === id)).map(id => ({ id, t: '', s: 'watched' }));
   const hidden = new Set(settings.bgHidden || []);
@@ -138,7 +140,8 @@ async function backgrounds(settings) {
       cover: (settings.hdBackgrounds && hdStore.data.art[it.id] && hdStore.data.art[it.id].poster) || (m.coverImage && (m.coverImage.extraLarge || m.coverImage.large)) || null,
       color: (m.coverImage && m.coverImage.color) || null,
       score: m.averageScore || null,
-      watchUrl: it.mal ? lib.aniwatchBase + it.mal : `https://anilist.co/anime/${it.id}`,
+      watchUrl: it.u || (it.mal ? lib.aniwatchBase + it.mal : `https://anilist.co/anime/${it.id}`),
+      progress: it.p || null,
       pageUrl: `https://anilist.co/anime/${it.id}`
     });
   }
@@ -164,4 +167,4 @@ async function browse(q, page, sort) {
   return { more: !!(pg.pageInfo && pg.pageInfo.hasNextPage), items: pg.media.map(m => ({ id: m.id, title: (m.title.english || m.title.romaji), year: m.seasonYear, format: m.format, score: m.averageScore, cover: m.coverImage && m.coverImage.large, color: m.coverImage && m.coverImage.color, banner: !!m.bannerImage })) };
 }
 
-module.exports = { browse, api, backgrounds, hub, importLibrary, resetLibrary, library };
+module.exports = { setLive, browse, api, backgrounds, hub, importLibrary, resetLibrary, library };

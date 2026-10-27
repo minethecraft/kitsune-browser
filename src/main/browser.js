@@ -436,7 +436,7 @@ const PALETTE = [
   ['reader', 'Toggle reader view'], ['split', 'Toggle split view'], ['pip', 'Picture-in-picture'], ['screenshot', 'Take screenshot'],
   ['bookmark', 'Bookmark this page'], ['find', 'Find in page'], ['print', 'Print'], ['pdf', 'Save page as PDF'], ['devtools', 'Developer tools'],
   ['viewSource', 'View page source'], ['fullscreen', 'Toggle full screen'], ['sleepOthers', 'Sleep other tabs (free memory)'], ['closeOthers', 'Close other tabs'],
-  ['nextTheme', 'Next theme'], ['toggleSidebar', 'Toggle sidebar'], ['zoomReset', 'Reset zoom'],
+  ['nextTheme', 'Next theme'], ['toggleSidebar', 'Toggle sidebar'], ['kirokuOpen', 'Open Kiroku'], ['kirokuTrack', 'Pause / resume Kiroku tracking'], ['zoomReset', 'Reset zoom'],
   ['page:anime', 'Open Anime Hub'], ['page:bookmarks', 'Open bookmarks'], ['page:history', 'Open history'], ['page:downloads', 'Open downloads'], ['page:settings', 'Open settings']
 ];
 
@@ -538,6 +538,8 @@ async function cmd(win, name, arg) {
     case 'moveToContainer': { const t = tabOf(win, arg.id); if (t && t.container !== arg.container) { createTab(win, { url: t.url, container: arg.container, afterId: t.id }); closeTab(win, t.id); } return; }
     case 'nextTheme': { const l = S.FEAT.themes; const i = l.indexOf(S.get().theme); S.patch({ theme: l[(i + 1) % l.length] }); return; }
     case 'assistant': if (!S.FEAT.assistant) return; win.aiOpen = arg === undefined ? !win.aiOpen : !!arg; if (!win.private) S.patch({ aiOpen: win.aiOpen }); layout(win); emit(win); send(win.ai, 'ai.focus'); return;
+    case 'kirokuOpen': createTab(win, { url: S.get().kirokuUrl || 'https://kiroku.zeabur.app' }); return;
+    case 'kirokuTrack': { const on = S.get().kirokuTrack === false; S.patch({ kirokuTrack: on }); toast(win, on ? 'Kiroku tracking on' : 'Kiroku tracking paused'); return; }
     case 'toggleSidebar': S.patch({ sidebarOn: !S.get().sidebarOn }); return;
     default:
       if (name.startsWith('page:')) return openPage(win, name.slice(5));
@@ -662,7 +664,7 @@ function startSleeper() {
 }
 
 module.exports = {
-  activeTab, tabOf, wake, wins, tabByWc, createWindow, createTab, focusedWin, winOfSender, cmd, navigate, suggest, emit, layout, relayoutAll, broadcast, broadcastDownloads,
+  toast, activeTab, tabOf, wake, wins, tabByWc, createWindow, createTab, focusedWin, winOfSender, cmd, navigate, suggest, emit, layout, relayoutAll, broadcast, broadcastDownloads,
   activateTab, closeTab, moveTab, tabContextMenu, snapshot, applyThemeChrome, startSleeper, saveSession, clearHistory, toast, PALETTE,
   setSideOpen(win, on) { on = !!on; if (win.sideOpen === on) return; win.sideOpen = on; if (on && win.side) { win.base.contentView.addChildView(win.side); win.base.contentView.addChildView(win.top); } layout(win); },
   setExpand(win, h) { win.expandH = h | 0; layout(win); },

@@ -26,6 +26,7 @@ if (S.LITE) {
   }
 }
 
+if (process.env.KITSUNE_SMOKE_V13) app.commandLine.appendSwitch('host-resolver-rules', 'MAP *.crunchyroll.com 127.0.0.1');
 if (process.env.KITSUNE_SMOKE && process.env.HTTPS_PROXY) { app.commandLine.appendSwitch('proxy-server', process.env.HTTPS_PROXY); app.commandLine.appendSwitch('ignore-certificate-errors'); }
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'kitsune', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } }]);
@@ -181,6 +182,30 @@ app.whenReady().then(async () => {
   reg('bg.remove', (w, e, id) => { BG.remove(id); B.broadcast('kiroku'); });
   reg('sfx.pick', (w, e, ev) => SND.pick(ev)); reg('sfx.clear', (w, e, ev) => SND.clear(ev));
   const UP = require('./updater'); UP.onState(st => B.broadcast('update', st)); UP.init(reg);
+  // ---- live Kiroku (read API + built-in watch tracker)
+  const KN = require('./kiroku-net');
+  if (!DEMO.on) {
+    KN.init();
+    let syncT = 0; const syncLive = async () => {
+      if (!KN.connected()) { kiroku.setLive(null); return; }
+      try {
+        const [lib, w] = await Promise.all([KN.library(), KN.watching().catch(() => [])]); const watchingIds = new Set(w.map(x => x.anilistId).filter(Boolean));
+        kiroku.setLive(lib.filter(i => i.anilistId).map(i => ({ id: +i.anilistId, t: i.title, s: watchingIds.has(i.anilistId) ? 'watching' : (i.status === 'watched' ? 'watched' : i.status === 'towatch' ? 'towatch' : 'watched'), r: i.rating || undefined, u: i.aniwatch || undefined, p: i.progress && i.progress.pct != null ? i.progress : undefined })));
+        B.broadcast('kiroku');
+      } catch (_) {}
+    };
+    KN.onChange(() => { B.broadcast('kirokuLive', KN.status()); clearTimeout(syncT); syncT = setTimeout(syncLive, 1500); });
+    setInterval(() => { if (KN.connected()) { syncLive(); } }, 5 * 60 * 1000).unref(); if (KN.connected()) setTimeout(syncLive, 4000);
+    reg('kn.status', () => KN.status());
+    reg('kn.connect', (w, e, o) => KN.connect(o || {}));
+    reg('kn.auto', () => KN.autoConnect());
+    reg('kn.disconnect', () => { KN.disconnect(); kiroku.setLive(null); B.broadcast('kiroku'); });
+    reg('kn.watching', () => KN.connected() ? KN.watching() : []);
+    reg('kn.history', () => KN.connected() ? KN.history() : []);
+    reg('kn.stats', () => KN.connected() ? KN.stats() : null);
+    reg('kn.refresh', async () => { await KN.library(true).catch(() => {}); await syncLive(); return KN.status(); });
+    reg('kn.open', (w, e, kind) => { const base = KN.status().server; B.createTab(w, { url: base + (kind === 'providers' ? '/#providers' : '') }); });
+  }
   reg('kiroku.hub', () => kiroku.hub(S.get()));
   reg('kiroku.import', (w, e, text) => { const n = kiroku.importLibrary(JSON.parse(text)); B.broadcast('kiroku'); return n; });
   reg('kiroku.reset', () => { kiroku.resetLibrary(); B.broadcast('kiroku'); });
@@ -269,12 +294,13 @@ app.whenReady().then(async () => {
 
   const st = S.session().data;
   const restore = !pendingUrls.length && S.get().restoreSession && st.tabs && st.tabs.length ? st : null;
-  if (!S.get().setupDone && !process.env.KITSUNE_SMOKE && !process.env.KITSUNE_SMOKE_AI && !restore && !process.env.KITSUNE_SMOKE_NEW && !process.env.KITSUNE_SMOKE_V11 && !process.env.KITSUNE_SMOKE_V12) pendingUrls = ['kitsune://setup/'].concat(pendingUrls);
+  if (!S.get().setupDone && !process.env.KITSUNE_SMOKE && !process.env.KITSUNE_SMOKE_AI && !restore && !process.env.KITSUNE_SMOKE_NEW && !process.env.KITSUNE_SMOKE_V11 && !process.env.KITSUNE_SMOKE_V12 && !process.env.KITSUNE_SMOKE_V13) pendingUrls = ['kitsune://setup/'].concat(pendingUrls);
   B.createWindow({ urls: pendingUrls, restore });
   pendingUrls = [];
   if (process.env.KITSUNE_SMOKE_NEW) require('./smoke-new')().catch(e => { console.error('smoke-new failed', e); app.exit(1); });
   if (process.env.KITSUNE_SMOKE_V11) require('./smoke-v11')().catch(e => { console.error('smoke-v11 failed', e); app.exit(1); });
   if (process.env.KITSUNE_SMOKE_V12) require('./smoke-v12')().catch(e => { console.error('smoke-v12 failed', e); app.exit(1); });
+  if (process.env.KITSUNE_SMOKE_V13) require('./smoke-v13')().catch(e => { console.error('smoke-v13 failed', e); app.exit(1); });
   if (process.env.KITSUNE_SMOKE_AI) require('./smoke-ai')().catch(e => { console.error('smoke-ai failed', e); app.exit(1); });
   if (process.env.KITSUNE_SMOKE) require('./smoke')().catch(e => { console.error('smoke failed', e); app.quit(); });
 

@@ -69,7 +69,7 @@ const SECTIONS = {
   performance: ['Performance', () => `<h2>Memory</h2><div class="card">${row('Put idle tabs to sleep', 'Sleeping tabs release their page process completely and wake instantly when clicked. 0 = never.', `<input type="number" min="0" max="240" value="${S.sleepMinutes}" data-num="sleepMinutes" style="width:90px"> <span class="d">minutes</span>`)}</div>
     <h2>Right now</h2><div class="card" id="perf"></div>`],
 
-  anime: ['Anime & Kiroku', () => `<h2>Library</h2><div class="card">${row('Kiroku site URL', 'Adds a Kiroku button to the sidebar', `<input type="text" data-txt="kirokuUrl" value="${K.esc(S.kirokuUrl)}" placeholder="https://…" style="width:300px">`)}
+  anime: ['Anime & Kiroku', () => `<h2>Kiroku</h2><div class="card" id="kn"><div class="row"><div class="d">Loading…</div></div></div><h2>Library</h2><div class="card">${row('Kiroku site URL', 'Adds a Kiroku button to the sidebar', `<input type="text" data-txt="kirokuUrl" value="${K.esc(S.kirokuUrl)}" placeholder="https://…" style="width:300px">`)}
     ${row('Extra AniList IDs', 'Comma-separated; they are added to your backgrounds', `<input type="text" id="ids" value="${(S.customAnilistIds || []).join(', ')}" style="width:300px" placeholder="e.g. 21, 16498">`)}
     <div class="row" style="display:block"><div class="t">Import library JSON</div><div class="d" style="margin:2px 0 8px">Paste an array of AniList IDs, or items like <code>{"id":16498,"t":"Attack on Titan","s":"watching","r":9}</code>. Ratings of 9–10 and "watching" titles show up most.</div><textarea id="lib" placeholder='[16498, 21, {"id":145815,"s":"watched","r":10}]'></textarea><div style="margin-top:8px;display:flex;gap:8px"><button class="btn primary" id="impLib">Import</button><button class="btn" id="resetLib">Back to bundled library</button></div></div></div>`],
 
@@ -145,6 +145,7 @@ function bind() {
   if (tab === 'privacy') call('blocker.info').then(i => { const e = $('#blkst'); if (e) e.textContent = i.ready ? `Active · ${i.filters || ''} filters${i.updated ? ' · updated ' + new Date(i.updated).toLocaleDateString() : ''}` : (S.blocker === 'off' ? 'Off' : 'Loading lists… (using built-in host list meanwhile)'); }).catch(() => {});
   if (tab === 'data') importUI();
   if (tab === 'account') acctUI();
+  if (tab === 'anime') knUI();
   if (tab === 'general') defstat();
   if (tab === 'data' || tab === 'about' || tab === 'performance') call('app.info').then(i => {
     const ud = $('#ud'); if (ud) ud.textContent = i.userData;
@@ -171,6 +172,24 @@ async function acctUI() {
     const go = async m => { $('#am').textContent = 'Working…'; try { await call('acct.auth', m, $('#ae').value, $('#apw').value); acctUI(); } catch (e) { $('#am').textContent = String(e.message || e).replace(/^Error invoking remote method '[^']*': (Error: )?/, ''); } };
     $('#ali').onclick = () => go('login'); $('#arg').onclick = () => go('register'); }
 }
+async function knUI() {
+  const box = $('#kn'); if (!box || !window.kitsune) return; let st; try { st = await call('kn.status'); } catch (_) { box.innerHTML = '<div class="row"><div class="d">Kiroku isn’t available in this edition.</div></div>'; return; }
+  const on = st.read || st.tracker; const NAMES = Object.values(st.providers || {}).join(', ');
+  const ago = t => { const s = Math.round((Date.now() - t) / 1000); return s < 60 ? 'just now' : s < 3600 ? Math.round(s / 60) + ' min ago' : s < 86400 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' days ago'; };
+  box.innerHTML = `<div class="row"><div class="grow"><div class="t">${on ? 'Connected to Kiroku' + (st.user ? ' as ' + K.esc(st.user) : '') : 'Connect your Kiroku'}</div><div class="d">${K.esc(st.server.replace(/^https?:\/\//, ''))} · ${st.read ? 'library &amp; Continue watching ✓' : 'library ✗'} · ${st.tracker ? 'watch tracker ✓' : 'watch tracker ✗'}</div></div>${on ? '<button class="btn" id="knx">Disconnect</button>' : ''}</div>
+  ${on ? '' : `<div class="row" style="display:block"><div class="d" style="margin-bottom:8px">Sign in to your Kiroku inside Kitsune, then press <b>Connect automatically</b>. Kitsune creates its own keys for you.</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="kno">Open Kiroku to sign in</button><button class="btn primary" id="kna">Connect automatically</button></div><div class="d" id="knm" style="margin-top:8px"></div></div>
+  <div class="row" style="display:block"><div class="t">Or paste your keys</div><div class="d" style="margin:2px 0 8px">Read key: Kiroku → Account → API keys. Setup code: Kiroku → Providers → Create setup code.</div><div style="display:flex;gap:8px;flex-wrap:wrap"><input type="text" id="knr" placeholder="kk_r_…" style="width:210px"><input type="text" id="knc" placeholder="kiroku:eyJz…" style="width:260px"><button class="btn primary" id="knp">Connect</button></div></div>`}
+  ${on ? `${row('Track what I watch', 'Built-in replacement for the Kiroku extension. Reports episodes you play on ' + NAMES + ' — nothing else, never from private windows.', tog('kirokuTrack', S.kirokuTrack !== false))}
+  ${row('Continue watching on the new tab', 'Shows your Kiroku progress with a one-click resume', tog('kirokuNewtab', S.kirokuNewtab !== false))}
+  ${row('Backgrounds from my live library', 'Uses your real Kiroku library instead of the bundled one', tog('bgKiroku', S.bgKiroku))}
+  <div class="row"><div class="grow"><div class="t">Last report</div><div class="d" id="knl">${st.last ? K.esc(st.last.text) + ' · ' + K.esc((st.providers || {})[st.last.provider] || '') + ' · ' + ago(st.last.at) : 'Nothing yet — play an episode.'}</div></div><button class="btn" id="knf">Refresh library</button></div>` : ''}`;
+  const msg = t => { const m = $('#knm'); if (m) m.textContent = t; };
+  const run = async f => { try { await f(); toast('Kiroku connected'); knUI(); } catch (e) { msg(String(e.message || e).replace(/^Error invoking remote method '[^']*': (Error: )?/, '')); } };
+  const o = $('#kno'); if (o) o.onclick = () => call('kn.open'); const a = $('#kna'); if (a) a.onclick = () => { msg('Connecting…'); run(() => call('kn.auto')); };
+  const p = $('#knp'); if (p) p.onclick = () => run(() => call('kn.connect', { readKey: $('#knr').value, setupCode: $('#knc').value }));
+  const x = $('#knx'); if (x) x.onclick = async () => { await call('kn.disconnect'); knUI(); }; const f = $('#knf'); if (f) f.onclick = async () => { f.textContent = 'Refreshing…'; await call('kn.refresh'); f.textContent = 'Done ✓'; setTimeout(() => { f.textContent = 'Refresh library'; }, 1500); };
+  box.querySelectorAll('[data-tg]').forEach(t => t.onclick = () => call('settings.set', { [t.dataset.tg]: !t.classList.contains('on') }));
+}
 async function defstat() { const i = await call('app.info'); const e = $('#defst'); if (e) e.textContent = i.isDefault ? 'Kitsune is your default browser.' : 'Not the default yet.'; }
 
 (async () => {
@@ -179,6 +198,7 @@ async function defstat() { const i = await call('app.info'); const e = $('#defst
   const busy = () => { const a = document.activeElement; return !!(a && a !== document.body && /^(SELECT|INPUT|TEXTAREA)$/.test(a.tagName) && a.closest('#main')); };
   let later = 0, pendA = false, pendS = false;
   const flush = () => { clearTimeout(later); if (busy()) { later = setTimeout(flush, 700); return; } if (pendS) { pendS = false; const sy = scrollY; render(); scrollTo(0, sy); } if (pendA) { pendA = false; if (tab === 'account') acctUI(); } };
+  kitsune.on('kirokuLive', () => { if (tab === 'anime' && !busy()) knUI(); });
   document.addEventListener('k:account', () => { pendA = true; flush(); });
   document.addEventListener('k:settings', e => { S = e.detail; pendS = true; flush(); });
 })();

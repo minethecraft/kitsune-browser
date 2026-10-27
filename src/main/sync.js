@@ -9,7 +9,7 @@ const secure = require('./secure');
 const storage = require('./storage');
 
 const meta = () => (meta._s || (meta._s = storage.open('sync-meta', { rev: 0, hashes: {}, last: 0, error: '' })));
-const NO_SYNC = new Set(['downloadDir', 'nimbusServer', 'nimbusModel', 'aiMode', 'aiOpen', 'aiPageContext', 'tmdbKey', 'accountServer', 'accountEmail', 'syncOn', 'syncWhat', 'sitePerms', 'setupDone', 'vpnOn', 'vpnActive', 'vpnProfiles', 'vpnBypass', 'vpnWebrtc', 'vpnFreeInit', 'kirokuUrl', 'extensions', 'customThemes', 'pins', 'containers']);
+const NO_SYNC = new Set(['downloadDir', 'nimbusServer', 'nimbusModel', 'aiMode', 'aiOpen', 'aiPageContext', 'tmdbKey', 'accountServer', 'accountEmail', 'syncOn', 'syncWhat', 'sitePerms', 'setupDone', 'vpnOn', 'vpnActive', 'vpnProfiles', 'vpnBypass', 'vpnWebrtc', 'vpnFreeInit', 'kirokuConnected', 'kirokuUrl', 'extensions', 'customThemes', 'pins', 'containers']);
 const hash = o => crypto.createHash('sha1').update(JSON.stringify(o)).digest('hex');
 let timer = null, running = false, listeners = [];
 const status = { signedIn: false, email: '', syncing: false, last: 0, error: '' };
