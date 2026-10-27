@@ -23,7 +23,9 @@ function library(settings) {
   const base = override.data.items || bundled.items;
   const extra = (settings.customAnilistIds || []).filter(n => Number.isInteger(n))
     .filter(id => !base.some(b => b.id === id)).map(id => ({ id, t: '', s: 'watched' }));
-  return { aniwatchBase: bundled.aniwatchBase, items: base.concat(extra) };
+  const hidden = new Set(settings.bgHidden || []);
+  const picks = (settings.bgPicks || []).filter(p => p && Number.isInteger(p.id)).filter(p => !base.some(b => b.id === p.id) && !extra.some(b => b.id === p.id)).map(p => ({ id: p.id, t: p.t || '', s: 'pick' }));
+  return { aniwatchBase: bundled.aniwatchBase, items: base.concat(extra, picks).filter(i => !hidden.has(i.id)) };
 }
 
 function importLibrary(json) {
@@ -141,7 +143,7 @@ async function backgrounds(settings) {
     });
   }
   // weight: currently watching first, then top-rated, then rest
-  const w = e => (e.status === 'watching' ? 3 : 0) + (e.rating >= 9 ? 2 : e.rating >= 8 ? 1 : 0) + (e.banner ? 1 : 0);
+  const w = e => (e.status === 'watching' ? 3 : e.status === 'pick' ? 1 : 0) + (e.rating >= 9 ? 2 : e.rating >= 8 ? 1 : 0) + (e.banner ? 1 : 0);
   return out.map(e => ({ e, k: w(e) + Math.random() * 2.5 })).sort((a, b) => b.k - a.k).map(x => x.e);
 }
 
@@ -151,4 +153,15 @@ async function hub(settings) {
   return list.sort((a, b) => (a.status === b.status ? (b.rating || 0) - (a.rating || 0) : a.status === 'watching' ? -1 : 1));
 }
 
-module.exports = { api, backgrounds, hub, importLibrary, resetLibrary, library };
+const SEARCH = `query($q:String,$p:Int){Page(page:$p,perPage:24){pageInfo{hasNextPage} media(search:$q,type:ANIME,isAdult:false,sort:[SEARCH_MATCH,POPULARITY_DESC]){id title{romaji english} coverImage{large color} bannerImage seasonYear format averageScore}}}`;
+const POPULAR = `query($p:Int,$s:[MediaSort]){Page(page:$p,perPage:24){pageInfo{hasNextPage} media(type:ANIME,isAdult:false,sort:$s){id title{romaji english} coverImage{large color} bannerImage seasonYear format averageScore}}}`;
+/** Browse the whole AniList catalogue so the user can pick more anime for their backgrounds. */
+async function browse(q, page, sort) {
+  const body = q ? { query: SEARCH, variables: { q, p: page || 1 } } : { query: POPULAR, variables: { p: page || 1, s: [sort === 'trending' ? 'TRENDING_DESC' : sort === 'score' ? 'SCORE_DESC' : 'POPULARITY_DESC'] } };
+  const res = await net.fetch('https://graphql.anilist.co', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(body) });
+  if (!res.ok) throw new Error('AniList ' + res.status);
+  const j = await res.json(); const pg = j.data && j.data.Page; if (!pg) throw new Error('AniList returned nothing');
+  return { more: !!(pg.pageInfo && pg.pageInfo.hasNextPage), items: pg.media.map(m => ({ id: m.id, title: (m.title.english || m.title.romaji), year: m.seasonYear, format: m.format, score: m.averageScore, cover: m.coverImage && m.coverImage.large, color: m.coverImage && m.coverImage.color, banner: !!m.bannerImage })) };
+}
+
+module.exports = { browse, api, backgrounds, hub, importLibrary, resetLibrary, library };

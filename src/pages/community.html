@@ -1,0 +1,76 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Community</title>
+<link rel="stylesheet" href="kitsune://assets/themes.css"><link rel="stylesheet" href="kitsune://assets/page.css">
+<style>
+.wrap { max-width: 1180px; } .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; } .bar input[type=text] { flex: 1; min-width: 200px; } .grow { flex: 1; }
+.tabs { display: flex; gap: 6px; margin: 2px 0 14px; flex-wrap: wrap; } .tabs button, .chip { border: 1px solid var(--line); background: var(--bg2); color: var(--muted); padding: 8px 18px; border-radius: 999px; cursor: pointer; font: inherit; font-weight: 600; font-size: 13.5px; } .tabs button.cur, .chip.cur { background: var(--accent); color: var(--accent-fg); border-color: transparent; box-shadow: 0 6px 18px var(--glow); }
+.btn { border: 1px solid var(--line); background: var(--bg2); color: var(--fg); padding: 8px 16px; border-radius: 999px; cursor: pointer; font: inherit; font-weight: 600; font-size: 13px; } .btn:hover { transform: translateY(-1px); } .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: transparent; } .btn.sm { padding: 4px 12px; font-size: 12px; } .btn.danger { color: var(--err, #ff7a8a); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+.cd { background: var(--bg2); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; transition: transform .18s; } .cd:hover { transform: translateY(-3px); }
+.pv { position: relative; aspect-ratio: 16/10; background: var(--bg3); overflow: hidden; } .pv img, .pv video { width: 100%; height: 100%; object-fit: cover; display: block; } .pv .tag { position: absolute; top: 8px; left: 8px; font-size: 11px; font-weight: 700; background: rgba(0,0,0,.6); color: #fff; padding: 2px 9px; border-radius: 999px; }
+.mini { position: absolute; inset: 0; display: grid; grid-template-rows: 26px 1fr; } .mini .tb { display: flex; align-items: center; gap: 5px; padding: 0 8px; } .mini .tb i { width: 36px; height: 12px; border-radius: 6px; opacity: .85; } .mini .bd { display: grid; place-items: center; font-weight: 800; font-size: 15px; background-size: cover; background-position: center; }
+.bd2 { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; } .bd2 .t { font-weight: 700; } .bd2 .a { font-size: 12px; color: var(--muted); } .bd2 .ds { font-size: 12.5px; color: var(--muted); } .acts { display: flex; gap: 6px; align-items: center; margin-top: auto; padding-top: 6px; }
+.lk { border: 0; background: none; color: var(--muted); cursor: pointer; font: inherit; font-size: 13px; } .lk.on { color: #ff6b8a; font-weight: 700; }
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: grid; place-items: center; z-index: 30; } .modal .box { background: var(--bg2); border: 1px solid var(--line); border-radius: 18px; padding: 22px; width: min(480px, 92vw); display: flex; flex-direction: column; gap: 10px; } .modal input, .modal textarea, .modal select { width: 100%; font: inherit; } .modal textarea { min-height: 70px; }
+.empty2 { text-align: center; color: var(--muted); padding: 60px 10px; grid-column: 1/-1; } .note { font-size: 12px; color: var(--muted); }
+</style></head>
+<body><div class="wrap"><h1><span id="lg"></span> Community</h1><p class="lead">Backgrounds and themes shared by other Kitsune users. Install in one click; share your own from Backgrounds or the Theme Studio.</p>
+<div class="tabs" id="tabs"></div>
+<div class="bar"><input type="text" id="q" placeholder="Search by name or tag…"><div style="display:flex;gap:6px" id="sort"></div><button class="btn primary" id="pub">Share something</button></div>
+<div class="grid" id="grid"></div><div style="text-align:center;margin:20px"><button class="btn" id="more" hidden>Load more</button></div></div><div id="toast"></div>
+<script src="kitsune://assets/icons.js"></script><script src="kitsune://assets/sfx.js"></script><script src="kitsune://assets/common.js"></script>
+<script>
+const $ = s => document.querySelector(s), call = (n, ...a) => kitsune.call(n, ...a), E = s => K.esc(s);
+const toast = t => { const e = $('#toast'); e.textContent = t; e.className = 'on'; clearTimeout(toast.t); toast.t = setTimeout(() => e.className = '', 2800); };
+const err = e => String(e && e.message || e).replace(/^Error invoking remote method '[^']*': (Error: )?/, '');
+let info = {}, tab = 'background', sort = 'top', q = '', page = 0, total = 0, items = [], busy = false;
+const TABS = [['background', 'Backgrounds'], ['theme', 'Themes'], ['mine', 'My shares']];
+const fileUrl = id => info.server + '/api/community/file/' + id;
+function drawTabs() { $('#tabs').innerHTML = TABS.map(([k, l]) => `<button class="${tab === k ? 'cur' : ''}" data-t="${k}">${l}</button>`).join(''); $('#sort').innerHTML = tab === 'mine' ? '' : [['top', 'Top'], ['new', 'New']].map(([k, l]) => `<button class="chip ${sort === k ? 'cur' : ''}" data-s="${k}">${l}</button>`).join(''); }
+function card(it) {
+  let pv; if (it.kind === 'background') { const v = it.media && it.media.type === 'video'; pv = v ? `<video src="${fileUrl(it.id)}" muted loop preload="metadata" onmouseenter="this.play()" onmouseleave="this.pause()"></video>` : `<img loading="lazy" src="${fileUrl(it.id)}" alt="">`; pv += `<span class="tag">${v ? '▶ Video' : 'Image'}</span>`; }
+  else { const t = it.theme; pv = `<div class="mini" style="background:${t.bg};color:${t.fg}"><div class="tb" style="background:${t.bg2 || t.bg}"><i style="background:${t.accent}"></i><i style="background:${t.bg3 || t.bg2 || t.bg}"></i><i style="background:${t.bg3 || t.bg2 || t.bg}"></i></div><div class="bd" style="${it.wallId ? `background-image:linear-gradient(rgba(0,0,0,${t.dim == null ? .35 : t.dim}),rgba(0,0,0,${t.dim == null ? .35 : t.dim})),url(${fileUrl(it.wallId)})` : ''}"><span style="color:${t.accent};text-shadow:0 2px 10px #0008">Aa</span></div></div><span class="tag">Theme${it.wallType === 'video' ? ' · video' : ''}</span>`; }
+  return `<div class="cd" data-id="${it.id}"><div class="pv">${pv}</div><div class="bd2"><div class="t">${E(it.title)}</div><div class="a">by ${E(it.author)}${it.tags.length ? ' · ' + it.tags.map(x => '#' + E(x)).join(' ') : ''}</div>${it.desc ? `<div class="ds">${E(it.desc)}</div>` : ''}<div class="acts"><button class="btn primary sm" data-a="install">Install</button><button class="lk ${it.liked ? 'on' : ''}" data-a="like">${it.liked ? '♥' : '♡'} ${it.likes}</button><span class="grow"></span>${it.mine ? '<button class="btn sm danger" data-a="del">Delete</button>' : '<button class="lk" data-a="report" title="Report">⚑</button>'}</div></div></div>`;
+}
+async function load(reset) {
+  if (busy) return; busy = true; if (reset) { page = 0; items = []; }
+  try { const r = tab === 'mine' ? await call('cm.mine') : await call('cm.list', { kind: tab, q, sort, page }); items = items.concat(r.items); total = tab === 'mine' ? r.items.length : r.total; }
+  catch (e) { $('#grid').innerHTML = `<div class="empty2">${E(err(e))}</div>`; busy = false; $('#more').hidden = true; return; }
+  $('#grid').innerHTML = items.map(card).join('') || `<div class="empty2">${tab === 'mine' ? 'You haven’t shared anything yet.' : 'Nothing here yet — be the first to share something!'}</div>`;
+  $('#more').hidden = tab === 'mine' || items.length >= total; busy = false;
+}
+$('#tabs').onclick = e => { const b = e.target.closest('button'); if (b) { tab = b.dataset.t; drawTabs(); load(true); } };
+$('#sort').onclick = e => { const b = e.target.closest('button'); if (b) { sort = b.dataset.s; drawTabs(); load(true); } };
+let qt; $('#q').oninput = e => { clearTimeout(qt); qt = setTimeout(() => { q = e.target.value.trim(); load(true); }, 300); };
+$('#more').onclick = () => { page++; load(); };
+$('#grid').onclick = async e => {
+  const b = e.target.closest('button[data-a]'); if (!b) return; const id = b.closest('.cd').dataset.id, it = items.find(x => x.id === id), a = b.dataset.a;
+  try {
+    if (a === 'install') { b.disabled = true; b.textContent = 'Installing…'; const r = await call('cm.install', id); b.textContent = r.already ? 'Already installed' : 'Installed ✓'; toast(r.kind === 'theme' ? `Theme “${r.name}” added — choose it in Settings or the Theme Studio.` : 'Added to My backgrounds.'); if (SFX.play) SFX.play('success'); }
+    else if (a === 'like') { const r = await call('cm.like', id); it.liked = r.liked; it.likes = r.likes; b.className = 'lk' + (r.liked ? ' on' : ''); b.textContent = (r.liked ? '♥ ' : '♡ ') + r.likes; }
+    else if (a === 'report') { if (confirm('Report this item as inappropriate?')) { await call('cm.report', id); toast('Thanks — reported.'); } }
+    else if (a === 'del') { if (confirm('Delete this from the community?')) { await call('cm.delete', id); load(true); } }
+  } catch (er) { toast(err(er)); if (a === 'install') { b.disabled = false; b.textContent = 'Install'; } }
+};
+function publishDialog(pre) {
+  const m = document.createElement('div'); m.className = 'modal';
+  const bgs = info.bgs, ths = info.themes; let kind = pre && pre.kind || (bgs.length ? 'background' : 'theme');
+  const render = () => { const l = kind === 'background' ? bgs : ths; m.innerHTML = `<div class="box"><h2 style="margin:0">Share with the community</h2>${info.signedIn ? '' : '<div class="note" style="color:var(--err,#ff7a8a)">You need to be signed in (Settings → Account) to share.</div>'}
+  <div class="tabs" style="margin:0"><button class="${kind === 'background' ? 'cur' : ''}" data-k="background">Background</button><button class="${kind === 'theme' ? 'cur' : ''}" data-k="theme">Theme</button></div>
+  ${l.length ? `<select id="pk">${l.map(x => `<option value="${x.id}" ${pre && pre.id === x.id ? 'selected' : ''}>${E(x.name)}${x.type ? ' (' + x.type + ')' : ''}</option>`).join('')}</select>` : `<div class="note">You don’t have any ${kind === 'background' ? 'custom backgrounds yet — add one in Backgrounds → My backgrounds' : 'custom themes yet — make one in the Theme Studio'}.</div>`}
+  <input type="text" id="pt" placeholder="Title" maxlength="60"><textarea id="pd" placeholder="Description (optional)" maxlength="300"></textarea><input type="text" id="pg" placeholder="Tags, comma separated (e.g. anime, night, neon)">
+  <div class="note">Only share things you made or have the right to share. Images up to 8 MB, videos up to 25 MB (MP4/WebM). Your email is shown masked. Max 5 shares per day.</div>
+  <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" id="px">Cancel</button><button class="btn primary" id="pgo" ${l.length && info.signedIn ? '' : 'disabled'}>Publish</button></div></div>`;
+    const sel = m.querySelector('#pk'); if (sel) { const f = () => { const x = l.find(y => y.id === sel.value); if (x && !m.querySelector('#pt').value) m.querySelector('#pt').value = x.name; }; sel.onchange = () => { m.querySelector('#pt').value = ''; f(); }; f(); }
+    m.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { kind = b.dataset.k; pre = null; render(); }); m.querySelector('#px').onclick = () => m.remove();
+    m.querySelector('#pgo').onclick = async e => { e.target.disabled = true; e.target.textContent = 'Publishing…'; const meta = { title: m.querySelector('#pt').value.trim(), desc: m.querySelector('#pd').value.trim(), tags: m.querySelector('#pg').value.trim() }; try { await call(kind === 'background' ? 'cm.publishBg' : 'cm.publishTheme', sel.value, meta); m.remove(); toast('Shared! Thank you ♥'); info = await call('cm.info'); tab = 'mine'; drawTabs(); load(true); } catch (er) { toast(err(er)); e.target.disabled = false; e.target.textContent = 'Publish'; } };
+  };
+  render(); document.body.appendChild(m);
+}
+$('#pub').onclick = () => publishDialog();
+(async () => {
+  await K.init(); $('#lg').innerHTML = I.users; info = await call('cm.info'); drawTabs(); await load(true);
+  document.addEventListener('k:settings', async () => { info = await call('cm.info'); });
+  const h = location.hash; const m = /^#(publish|publishTheme):(.+)$/.exec(h); if (m) { history.replaceState(null, '', location.pathname); publishDialog(m[1] === 'publish' ? { kind: 'background', id: decodeURIComponent(m[2]) } : { kind: 'theme', id: decodeURIComponent(m[2]) }); }
+})();
+</script></body></html>

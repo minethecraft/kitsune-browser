@@ -5,7 +5,7 @@
 <link rel="stylesheet" href="kitsune://assets/themes.css">
 <style>
 html, body { background: transparent; overflow: hidden; user-select: none; -webkit-user-select: none; }
-#side { height: 100vh; width: 54px; background: var(--bg); border-right: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 4px; position: relative; overflow: hidden; }
+#side { height: 100vh; width: 100vw; background: var(--bg); border-right: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 4px; position: relative; overflow: hidden; }
 #side::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, var(--glow), transparent 28%); opacity: .35; }
 .sb { position: relative; z-index: 1; width: 38px; height: 38px; border: 0; border-radius: 12px; background: transparent; color: var(--muted); display: grid; place-items: center; cursor: pointer; transition: transform .18s cubic-bezier(.2,.9,.3,1.4), background .18s, color .18s; flex: none; padding: 0; }
 .sb:hover { background: var(--bg3); color: var(--fg); transform: scale(1.12) translateX(1px); }
@@ -21,15 +21,21 @@ html, body { background: transparent; overflow: hidden; user-select: none; -webk
 .pins { display: flex; flex-direction: column; gap: 4px; align-items: center; overflow-y: auto; overflow-x: hidden; max-height: 100%; scrollbar-width: none; z-index: 1; }
 .pins::-webkit-scrollbar { display: none; }
 .sb.in { animation: sbIn .35s cubic-bezier(.2,.9,.3,1.3) both; } @keyframes sbIn { from { opacity: 0; transform: translateX(-14px) scale(.7); } }
+#side.open { align-items: stretch; padding: 8px 8px; box-shadow: 8px 0 28px rgba(0,0,0,.35); }
+.lb { display: none; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg); }
+#side.open .sb { width: auto; height: 40px; display: flex; align-items: center; justify-content: flex-start; gap: 14px; padding: 0 10px; } #side.open .sb > svg, #side.open .sb > img, #side.open .sb > .lt { flex: none; } #side.open .sb .lt { width: 20px; text-align: center; }
+#side.open .lb { display: block; } #side.open .sb:hover { transform: translateX(2px); }
+#side.open .pins { align-items: stretch; } #side.open .div { width: auto; } #side.open .ws { margin: 4px 12px; }
 </style>
 </head>
 <body>
 <div id="side"></div>
 <script src="kitsune://assets/icons.js"></script>
-<script src="kitsune://assets/common.js"></script>
+<script src="kitsune://assets/sfx.js"></script><script src="kitsune://assets/common.js"></script>
 <script>
 const $ = s => document.querySelector(s), call = (n, ...a) => kitsune.call(n, ...a);
-let S, F, snap = null, first = true;
+let S, F, snap = null, first = true, open = false, ot = 0;
+const setOpen = on => { clearTimeout(ot); ot = setTimeout(() => { if (open === on) return; open = on; $('#side').classList.toggle('open', on); call('ui.sideOpen', on).catch(() => {}); }, on ? 120 : 220); };
 function render() {
   if (!S) return;
   const root = $('#side'); const cur = snap ? snap.tabs.find(t => t.id === snap.activeId) : null; const curHost = cur ? K.host(cur.url) : '';
@@ -38,17 +44,20 @@ function render() {
   const ws = (S.containers || []).map(c => `<div class="ws${snap && snap.workspace === c.id ? ' cur' : ''}" data-w="${c.id}" title="${K.esc(c.name)} workspace" style="background:${c.color}"></div>`).join('');
   root.innerHTML =
     `<button class="sb logo" data-c="newTab" title="New tab">${I.fox.replace('width="28" height="28"', 'width="30" height="30"')}</button>` +
-    `<button class="sb" data-p="anime" title="Anime Hub">${I.anime}</button><button class="sb" data-c="assistant" title="AI assistant">${I.spark}</button>` + (S.kirokuUrl ? `<button class="sb" data-u="${K.esc(S.kirokuUrl)}" title="Kiroku">${I.book}</button>` : '') +
+    `<button class="sb" data-p="anime" title="Anime Hub">${I.anime}</button>${F.assistant ? `<button class="sb" data-c="assistant" title="AI assistant">${I.spark}</button>` : ''}` + (S.kirokuUrl ? `<button class="sb" data-u="${K.esc(S.kirokuUrl)}" title="Kiroku">${I.book}</button>` : '') +
     `<div class="div"></div><div class="pins">${pins}</div><button class="sb" data-c="pinCurrent" title="Pin this site to the sidebar">${I.pin}</button>` +
     `<div class="grow"></div>` +
     (F.containers ? `<div class="ws all${snap && snap.workspace === 'all' ? ' cur' : ''}" data-w="all" title="All workspaces"></div>${ws}<div class="div"></div>` : '') +
     `<button class="sb" data-p="bookmarks" title="Bookmarks">${I.star}</button><button class="sb" data-p="history" title="History">${I.clock}</button><button class="sb" data-p="downloads" title="Downloads">${I.download}</button><button class="sb" data-p="settings" title="Settings">${I.gear}</button>`;
   first = false;
+  root.querySelectorAll('.sb').forEach(b => { const l = document.createElement('span'); l.className = 'lb'; l.textContent = b.title || ''; b.appendChild(l); });
+  if (open) root.classList.add('open');
   root.querySelectorAll('[data-u]').forEach(b => b.onclick = () => call('cmd', 'openUrl', b.dataset.u));
   root.querySelectorAll('[data-p]').forEach(b => b.onclick = () => call('cmd', 'openPage', b.dataset.p));
   root.querySelectorAll('[data-c]').forEach(b => b.onclick = () => call('cmd', b.dataset.c));
   root.querySelectorAll('[data-w]').forEach(b => b.onclick = () => call('cmd', 'workspace', b.dataset.w));
 }
+$('#side').addEventListener('mouseenter', () => setOpen(true)); $('#side').addEventListener('mouseleave', () => setOpen(false));
 (async () => { const st = await K.init(); S = st.settings; F = st.features; snap = st.snapshot; render();
   kitsune.on('tabs', s => { const changed = !snap || s.activeId !== snap.activeId || s.workspace !== snap.workspace || (s.tabs.find(t => t.id === s.activeId) || {}).url !== (snap.tabs.find(t => t.id === snap.activeId) || {}).url; snap = s; if (changed) render(); });
   kitsune.on('settings', s => { S = s; render(); });

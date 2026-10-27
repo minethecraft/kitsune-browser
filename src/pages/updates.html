@@ -1,0 +1,55 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Update Kitsune</title>
+<link rel="stylesheet" href="kitsune://assets/themes.css"><link rel="stylesheet" href="kitsune://assets/page.css">
+<style>
+.wrap { max-width: 760px; }
+.hero { display: flex; gap: 22px; align-items: center; padding: 26px; border-radius: 24px; background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 22%, var(--bg2)), color-mix(in srgb, var(--accent2) 14%, var(--bg2))); border: 1px solid var(--line); position: relative; overflow: hidden; }
+.hero::after { content: ""; position: absolute; right: -40px; top: -60px; width: 220px; height: 220px; border-radius: 50%; background: radial-gradient(circle, var(--glow), transparent 70%); pointer-events: none; }
+.logo { flex: none; width: 96px; height: 96px; display: grid; place-items: center; border-radius: 26px; background: var(--bg); box-shadow: 0 10px 30px var(--glow); } .logo svg { width: 64px; height: 64px; }
+.logo.spin svg { animation: spin 1.1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
+.hero h1 { font-size: 28px; margin: 0 0 4px; } .hero p { margin: 0; color: var(--muted); }
+.vers { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; } .vers span { background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 12.5px; color: var(--muted); } .vers b { color: var(--fg); }
+.btn { border: 1px solid var(--line); background: var(--bg2); color: var(--fg); padding: 11px 22px; border-radius: 999px; cursor: pointer; font: inherit; font-weight: 700; transition: transform .15s, box-shadow .15s; } .btn:hover { transform: translateY(-2px); } .btn:disabled { opacity: .5; cursor: default; transform: none; }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: transparent; box-shadow: 0 8px 24px var(--glow); padding: 13px 28px; font-size: 15px; }
+.actions { display: flex; gap: 10px; margin-top: 18px; align-items: center; flex-wrap: wrap; }
+.pbar { height: 10px; border-radius: 6px; background: var(--bg); overflow: hidden; margin-top: 16px; } .pbar i { display: block; height: 100%; width: 0; background: var(--grad); background-size: 200%; animation: slide 2s linear infinite; transition: width .2s; }
+.ok { color: var(--ok, #6cf5a2); } .err { color: var(--err, #ff7a8a); }
+ul.log { margin: 0; padding: 12px 18px 12px 34px; } ul.log li { margin: 6px 0; }
+.step { display: flex; gap: 12px; align-items: center; padding: 10px 14px; } .step i { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--bg3); font-style: normal; font-size: 12px; font-weight: 700; } .step.on i { background: var(--accent); color: var(--accent-fg); } .step.done i { background: var(--ok, #6cf5a2); color: #06210f; }
+</style></head>
+<body><div class="wrap">
+<div class="hero"><div class="logo" id="logo"></div><div style="flex:1;min-width:0"><h1 id="title">Update Kitsune</h1><p id="sub">Checking…</p><div class="vers" id="vers"></div>
+<div class="pbar" id="pb" hidden><i></i></div>
+<div class="actions"><button class="btn primary" id="main" hidden></button><button class="btn" id="chk">Check again</button></div></div></div>
+
+<h2>What happens when you update</h2><div class="card" id="steps"></div>
+<div id="notesBox" hidden><h2>What’s new</h2><div class="card"><ul class="log" id="notes"></ul></div></div>
+<h2>Settings</h2><div class="card"><div class="row"><div class="grow"><div class="t">Check for updates automatically</div><div class="d">Looks every few hours and shows a dot on the toolbar when a new version is ready.</div></div><div class="tg" id="auto"></div></div>
+<div class="row"><div class="grow"><div class="t">Update server</div><div class="d" id="srv"></div></div></div></div>
+</div><div id="toast"></div>
+<script src="kitsune://assets/icons.js"></script><script src="kitsune://assets/sfx.js"></script><script src="kitsune://assets/common.js"></script>
+<script>
+const $ = s => document.querySelector(s), call = (n, ...a) => kitsune.call(n, ...a);
+let st = {}, S;
+const MB = n => (n / 1048576).toFixed(n > 1e8 ? 0 : 1) + ' MB';
+function render() {
+  const busy = st.status === 'checking' || st.status === 'downloading';
+  $('#logo').innerHTML = I.fox; $('#logo').classList.toggle('spin', st.status === 'checking');
+  const T = { checking: ['Checking for updates…', 'Asking the Kitsune server what’s newest.'], uptodate: ['You’re up to date', 'Kitsune ' + st.current + ' is the latest version.'], available: ['Kitsune ' + st.latest + ' is ready', 'A new version is available for this ' + (st.file ? st.file.edition : '') + ' install.'], downloading: ['Downloading update…', MB(st.received || 0) + ' of ' + MB(st.total || 0)], ready: ['Ready to install', 'The download is verified. ' + (st.how || '')], opened: ['Almost done', 'The installer has been opened. Finish it, then restart Kitsune.'], error: ['Something went wrong', st.error || ''], idle: ['Update Kitsune', st.error || 'Press the button to look for a new version.'] }[st.status] || ['Update Kitsune', ''];
+  $('#title').textContent = T[0]; $('#sub').textContent = T[1]; $('#sub').className = st.status === 'error' ? 'err' : '';
+  $('#vers').innerHTML = `<span>Installed <b>${K.esc(st.current || '')}</b></span>${st.latest ? `<span>Newest <b>${K.esc(st.latest)}</b></span>` : ''}${st.checked ? `<span>Checked ${new Date(st.checked).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>` : ''}${st.file ? `<span>${K.esc(st.file.ext.toUpperCase())} · ${MB(st.file.size)}</span>` : ''}`;
+  const pb = $('#pb'); pb.hidden = st.status !== 'downloading'; pb.firstElementChild.style.width = Math.round((st.progress || 0) * 100) + '%';
+  const m = $('#main'); const label = { available: 'Update now', ready: 'Install & restart', downloading: 'Downloading…', error: st.file ? 'Try again' : '' }[st.status];
+  m.hidden = !label; m.textContent = label || ''; m.disabled = st.status === 'downloading';
+  $('#chk').disabled = busy; $('#chk').hidden = st.status === 'available' || st.status === 'ready' || st.status === 'downloading';
+  const idx = { available: 0, downloading: 1, ready: 2, opened: 3 }[st.status]; const names = ['Download the new version', 'Verify it against its checksum', st.how || 'Install it', 'Restart into the new version'];
+  $('#steps').innerHTML = names.map((n, i) => `<div class="step ${idx === undefined ? '' : i < idx ? 'done' : i === idx ? 'on' : ''}"><i>${idx !== undefined && i < idx ? '✓' : i + 1}</i><span>${K.esc(n)}</span></div>`).join('');
+  $('#notesBox').hidden = !(st.notes && st.notes.length); $('#notes').innerHTML = (st.notes || []).map(x => `<li>${K.esc(x)}</li>`).join('');
+}
+const paint = u => { st = u; render(); };
+$('#main').onclick = async () => { if (st.status === 'ready') await call('update.install'); else call('update.run'); };
+$('#chk').onclick = () => call('update.check').then(paint);
+$('#auto').onclick = () => call('settings.set', { autoUpdateCheck: !(S.autoUpdateCheck !== false) });
+const sync = () => { $('#auto').classList.toggle('on', S.autoUpdateCheck !== false); $('#srv').textContent = S.updateServer || S.accountServer; };
+(async () => { const s0 = await K.init(); S = s0.settings; sync(); document.addEventListener('k:settings', e => { S = e.detail; sync(); }); kitsune.on('update', paint); st = await call('update.state'); render(); if (st.status === 'idle' || (Date.now() - (st.checked || 0)) > 600000) call('update.check').then(paint); })();
+</script></body></html>

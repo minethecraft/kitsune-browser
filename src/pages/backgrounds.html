@@ -1,0 +1,73 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Backgrounds</title>
+<link rel="stylesheet" href="kitsune://assets/themes.css"><link rel="stylesheet" href="kitsune://assets/page.css">
+<style>
+.tabs { display: flex; gap: 6px; margin: 4px 0 18px; flex-wrap: wrap; } .tabs button { border: 0; background: var(--bg2); color: var(--muted); padding: 9px 18px; border-radius: 999px; cursor: pointer; font: inherit; font-weight: 600; transition: .15s; } .tabs button.cur { background: var(--accent); color: var(--accent-fg); }
+.bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; } .bar input[type=text] { flex: 1; min-width: 220px; }
+.chips { display: flex; gap: 6px; } .chip { border: 1px solid var(--line); background: var(--bg2); color: var(--fg); border-radius: 999px; padding: 6px 14px; cursor: pointer; font: inherit; font-size: 13px; } .chip.cur { background: var(--accent); color: var(--accent-fg); border-color: transparent; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+.tile { position: relative; border-radius: 14px; overflow: hidden; cursor: pointer; background: var(--bg2); border: 2px solid transparent; transition: transform .18s, border-color .18s; aspect-ratio: 2/3; } .tile:hover { transform: translateY(-4px); }
+.tile img, .tile video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tile .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 22px 8px 8px; font-size: 12px; font-weight: 600; background: linear-gradient(transparent, rgba(0,0,0,.82)); color: #fff; line-height: 1.25; }
+.tile .ck { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 50%; background: rgba(0,0,0,.55); display: grid; place-items: center; color: #fff; font-weight: 800; transition: .15s; } .tile.on { border-color: var(--accent); } .tile.on .ck { background: var(--accent); color: var(--accent-fg); }
+.tile.mine { aspect-ratio: 16/10; cursor: default; } .tile.mine.off { opacity: .45; }
+.tile .acts { position: absolute; top: 8px; left: 8px; display: flex; gap: 6px; } .tile .acts button { border: 0; border-radius: 8px; background: rgba(0,0,0,.6); color: #fff; padding: 4px 9px; font-size: 11.5px; cursor: pointer; } .tile .acts button:hover { background: var(--accent); color: var(--accent-fg); }
+.badge2 { position: absolute; bottom: 30px; left: 8px; font-size: 10.5px; background: rgba(0,0,0,.6); color: #fff; border-radius: 6px; padding: 2px 7px; }
+.btn { border: 1px solid var(--line); background: var(--bg2); color: var(--fg); padding: 9px 18px; border-radius: 999px; cursor: pointer; font: inherit; font-weight: 600; } .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: transparent; }
+.drop { border: 2px dashed var(--line); border-radius: 18px; padding: 26px; text-align: center; color: var(--muted); margin-bottom: 16px; } .drop.over { border-color: var(--accent); color: var(--fg); }
+.more { text-align: center; margin: 18px 0; } .note { color: var(--muted); font-size: 13px; }
+</style></head>
+<body><div class="wrap"><h1><span id="logo"></span> Backgrounds</h1><p class="lead">Pick more anime, or use your own pictures and videos on the new tab page.</p>
+<div class="bar"><span class="note">New tab shows</span><div class="chips" id="mode"></div><span class="grow"></span><button class="btn" id="comm">Browse community</button></div>
+<div class="tabs" id="tabs"></div><div id="body"></div></div><div id="toast"></div>
+<script src="kitsune://assets/icons.js"></script><script src="kitsune://assets/sfx.js"></script><script src="kitsune://assets/common.js"></script>
+<script>
+const $ = s => document.querySelector(s), call = (n, ...a) => kitsune.call(n, ...a);
+const toast = t => { const e = $('#toast'); e.textContent = t; e.className = 'on'; clearTimeout(toast.t); toast.t = setTimeout(() => e.className = '', 2600); };
+let S, tab = (location.hash || '#anime').slice(1), picks = [], hidden = [], q = '', sort = 'popular', page = 1, items = [], more = false, busy = false, mine = [];
+const MODES = [['mix', 'Both'], ['anime', 'Anime only'], ['mine', 'My backgrounds only']];
+function head() {
+  $('#mode').innerHTML = MODES.map(([v, l]) => `<button class="chip ${S.bgMode === v ? 'cur' : ''}" data-m="${v}">${l}</button>`).join('');
+  $('#mode').onclick = e => { const b = e.target.closest('button'); if (b) call('settings.set', { bgMode: b.dataset.m }); };
+  $('#tabs').innerHTML = [['anime', 'Anime picker'], ['mine', 'My backgrounds (' + mine.length + ')']].map(([k, l]) => `<button class="${tab === k ? 'cur' : ''}" data-k="${k}">${l}</button>`).join('');
+  $('#tabs').onclick = e => { const b = e.target.closest('button'); if (b) { tab = b.dataset.k; history.replaceState(null, '', '#' + tab); render(); } };
+}
+const isOn = id => !hidden.includes(id) && (picks.some(p => p.id === id) || BUNDLED.has(id));
+let BUNDLED = new Set();
+async function loadAnime(reset) {
+  if (busy) return; busy = true; if (reset) { page = 1; items = []; }
+  try { const r = await call('bg.browse', q, page, sort); items = items.concat(r.items); more = r.more; } catch (e) { toast('Couldn’t reach AniList: ' + String(e.message).replace(/^Error invoking remote method '[^']*': (Error: )?/, '')); }
+  busy = false; drawAnime();
+}
+function drawAnime() {
+  const g = $('#grid'); if (!g) return;
+  g.innerHTML = items.map(x => `<div class="tile ${isOn(x.id) ? 'on' : ''}" data-id="${x.id}" data-t="${K.esc(x.title)}"><img loading="lazy" src="${K.esc(x.cover || '')}" alt=""><div class="ck">✓</div><div class="cap">${K.esc(x.title)}<br><span style="opacity:.7;font-weight:400">${x.year || ''} ${x.score ? '· ★ ' + (x.score / 10).toFixed(1) : ''}</span></div></div>`).join('') || `<p class="note">${busy ? 'Loading…' : 'Nothing found.'}</p>`;
+  const mo = $('#more'); if (mo) mo.hidden = !more;
+}
+function renderAnime() {
+  $('#body').innerHTML = `<div class="bar"><input type="text" id="q" placeholder="Search any anime…" value="${K.esc(q)}"><div class="chips" id="sorts">${[['popular', 'Popular'], ['trending', 'Trending'], ['score', 'Top rated']].map(([v, l]) => `<button class="chip ${sort === v ? 'cur' : ''}" data-s="${v}">${l}</button>`).join('')}</div></div>
+  <p class="note">Click a title to add it to (or remove it from) your new tab backgrounds. <b>${picks.length}</b> added from here; your Kiroku library is always included unless you turn a title off.</p><div class="grid" id="grid"></div><div class="more"><button class="btn" id="more">Load more</button></div>`;
+  let t; $('#q').oninput = () => { clearTimeout(t); t = setTimeout(() => { q = $('#q').value.trim(); loadAnime(true); }, 350); };
+  $('#sorts').onclick = e => { const b = e.target.closest('button'); if (b) { sort = b.dataset.s; q = ''; renderAnime(); } };
+  $('#more').onclick = () => { page++; loadAnime(false); };
+  $('#grid').onclick = async e => { const t = e.target.closest('.tile'); if (!t) return; const id = +t.dataset.id; await call('bg.togglePick', { id, title: t.dataset.t }); const r = await call('bg.picks'); picks = r.picks; hidden = r.hidden; t.classList.toggle('on', isOn(id)); renderCount(); };
+  drawAnime(); loadAnime(true);
+}
+function renderCount() { const n = document.querySelector('.note b'); if (n) n.textContent = picks.length; }
+function renderMine() {
+  $('#body').innerHTML = `<div class="drop" id="drop"><b>Drop images or videos here</b><br><span class="note">JPG, PNG, WebP, GIF, AVIF · MP4, WebM (video plays muted and loops; it pauses on battery saver)</span><br><br><button class="btn primary" id="add">Choose files…</button></div>
+  <div class="grid" id="mg">${mine.map(x => `<div class="tile mine ${x.on === false ? 'off' : ''}" data-id="${x.id}">${x.type === 'video' ? `<video src="${x.url}" muted loop preload="metadata"></video>` : `<img src="${x.url}" alt="">`}<span class="badge2">${x.type === 'video' ? '▶ video' : 'image'}${x.community ? ' · community' : ''}</span><div class="cap">${K.esc(x.name)}</div><div class="acts"><button data-a="tog">${x.on === false ? 'Off' : 'On'}</button><button data-a="share">Share</button><button data-a="del">Delete</button></div></div>`).join('')}</div>${mine.length ? '' : '<p class="note">Nothing here yet.</p>'}`;
+  $('#add').onclick = async () => { const r = await call('bg.add'); if (r.errors && r.errors.length) toast(r.errors[0]); else if (r.added.length) toast('Added ' + r.added.length); await refresh(); };
+  const dz = $('#drop'); dz.ondragover = e => { e.preventDefault(); dz.classList.add('over'); }; dz.ondragleave = () => dz.classList.remove('over'); dz.ondrop = e => { e.preventDefault(); dz.classList.remove('over'); toast('Use “Choose files…” (drag-drop from the desktop isn’t available here).'); };
+  document.querySelectorAll('#mg video').forEach(v => { v.parentElement.onmouseenter = () => v.play().catch(() => {}); v.parentElement.onmouseleave = () => v.pause(); });
+  $('#mg').onclick = async e => { const b = e.target.closest('button'); const t = e.target.closest('.tile'); if (!b || !t) return; const id = t.dataset.id; const x = mine.find(m => m.id === id);
+    if (b.dataset.a === 'del') { if (confirm('Delete this background?')) { await call('bg.remove', id); await refresh(); } }
+    else if (b.dataset.a === 'tog') { await call('bg.update', id, { on: x.on === false }); await refresh(); }
+    else if (b.dataset.a === 'share') { location.href = 'kitsune://community/#publish:' + id; } };
+}
+async function refresh() { mine = await call('bg.mine'); render(); }
+function render() { head(); if (tab === 'mine') renderMine(); else renderAnime(); }
+$('#comm').onclick = () => { location.href = 'kitsune://community/'; };
+(async () => { const st = await K.init(); S = st.settings; $('#logo').innerHTML = I.palette; const r = await call('bg.picks'); picks = r.picks; hidden = r.hidden; BUNDLED = new Set(r.base); mine = await call('bg.mine');
+  render(); document.addEventListener('k:settings', e => { S = e.detail; head(); }); })();
+</script></body></html>

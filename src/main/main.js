@@ -8,7 +8,11 @@ const S = require('./state');
 // look like plain Chrome (many sites block "Electron" user agents)
 app.userAgentFallback = app.userAgentFallback.replace(/\s(Electron|kitsune-browser|Kitsune)\/\S+/gi, '');
 app.commandLine.appendSwitch('disable-features', 'MediaRouter,Translate,AutofillServerCommunication');
-app.commandLine.appendSwitch('enable-features', 'SmoothScrolling');
+app.commandLine.appendSwitch('enable-features', 'SmoothScrolling,PlatformHEVCDecoderSupport,VaapiVideoDecoder');
+// Video: proprietary codecs (H.264/AAC/MP3) ship in Electron's ffmpeg; let videos autoplay muted like Chrome does.
+app.commandLine.appendSwitch('autoplay-policy', 'document-user-activation-required');
+const DEMO = require('./demo');
+if (DEMO.on) { app.commandLine.appendSwitch('no-sandbox'); app.commandLine.appendSwitch('disable-gpu-compositing'); app.commandLine.appendSwitch('disable-dev-shm-usage'); }
 
 // Lite = portable: keep the profile next to the file you launched, when that folder is writable.
 if (S.LITE) {
@@ -39,8 +43,11 @@ app.on('second-instance', (e, argv) => {
 app.on('open-url', (e, url) => { e.preventDefault(); const B = require('./browser'); const w = B.focusedWin(); if (w) B.createTab(w, { url }); else pendingUrls.push(url); });
 
 // ---- ready -------------------------------------------------------------------------------------
-app.whenReady().then(() => {
-  S.init();
+app.whenReady().then(async () => {
+  // Widevine DRM (Netflix, Disney+, Spotify...) only exists in the castlabs Electron build; plain Electron has no `components`.
+  try { const { components } = require('electron'); if (components && components.whenReady) { await Promise.race([components.whenReady(), new Promise(r => setTimeout(r, 20000))]); S.runtime.widevine = true; } } catch (_) {}
+  S.init(); if (DEMO.on) S.patch({ setupDone: true, nimbusServer: '', restoreSession: false });
+  require('./blocker').load(S.get().blocker).catch(() => {});
   const downloads = require('./downloads'); downloads.init();
   const kiroku = require('./kiroku');
   const B = require('./browser');
@@ -71,6 +78,7 @@ app.whenReady().then(() => {
   reg('tab.menu', (w, e, id) => B.tabContextMenu(w, id), true);
   reg('nav', (w, e, input) => { B.navigate(w, input); }, true);
   reg('omni.suggest', (w, e, text) => B.suggest(w, text), true);
+  reg('ui.sideOpen', (w, e, on) => B.setSideOpen(w, on), true);
   reg('ui.expand', (w, e, h) => B.setExpand(w, h), true);
   reg('find', (w, e, text, o) => B.findText(w, text, o), true);
   // never return the command's result: it can be a tab/window object, which is not serialisable over IPC
@@ -140,7 +148,39 @@ app.whenReady().then(() => {
 
   // kiroku / anime
   if (S.FEAT.assistant) require('./nimbus').init(reg);
-  reg('kiroku.bg', () => kiroku.backgrounds(S.get()));
+  reg('blocker.info', () => require('./blocker').info());
+  const BG = require('./backgrounds'), SND = require('./sounds');
+  reg('kiroku.bg', async () => {
+    const s = S.get(); const th = String(s.theme).startsWith('custom:') && (s.customThemes || []).find(t => 'custom:' + t.id === s.theme);
+    if (th && th.wall) return [{ id: 'theme', custom: true, type: th.wall.type, url: th.wall.url, title: th.name, status: 'theme', dim: th.wall.dim }];
+    const mine = BG.forNewTab(); if (s.bgMode === 'mine' && mine.length) return mine;
+    const anime = s.bgMode === 'mine' ? [] : await kiroku.backgrounds(s);
+    if (!mine.length) return anime; const out = []; const max = Math.max(anime.length, mine.length);
+    for (let i = 0; i < max; i++) { if (anime[i]) out.push(anime[i]); if (mine[i % mine.length] && i < Math.max(mine.length, Math.ceil(anime.length / 2))) out.push(mine[i % mine.length]); }
+    return out;
+  });
+  reg('bg.browse', (w, e, q, page, sort) => kiroku.browse(String(q || '').slice(0, 80), page | 0 || 1, sort));
+  reg('bg.picks', () => ({ picks: S.get().bgPicks, hidden: S.get().bgHidden, base: kiroku.library(Object.assign({}, S.get(), { bgPicks: [], bgHidden: [] })).items.map(i => i.id) }));
+  reg('bg.togglePick', (w, e, a) => { const s = S.get(); const has = s.bgPicks.some(p => p.id === a.id); const inBundled = kiroku.library(Object.assign({}, s, { bgPicks: [], bgHidden: [] })).items.some(i => i.id === a.id);
+    if (inBundled) { const hid = new Set(s.bgHidden); hid.has(a.id) ? hid.delete(a.id) : hid.add(a.id); S.patch({ bgHidden: [...hid] }); }
+    else S.patch({ bgPicks: has ? s.bgPicks.filter(p => p.id !== a.id) : s.bgPicks.concat([{ id: a.id | 0, t: String(a.title || '').slice(0, 80) }]).slice(-300) });
+    B.broadcast('kiroku'); return { on: !has }; });
+  const CM = require('./community');
+  reg('cm.list', (w, e, o) => CM.list(o || {}));
+  reg('cm.mine', () => CM.mine());
+  reg('cm.info', () => ({ signedIn: CM.signedIn(), server: CM.base(), email: S.get().accountEmail, bgs: BG.list().map(b => ({ id: b.id, name: b.name, type: b.type, file: b.file, community: b.community || null })), themes: (S.get().customThemes || []).map(t => ({ id: t.id, name: t.name })) }));
+  reg('cm.like', (w, e, id) => CM.like(String(id)));
+  reg('cm.report', (w, e, id) => CM.report(String(id)));
+  reg('cm.delete', (w, e, id) => CM.del(String(id)));
+  reg('cm.publishBg', async (w, e, id, m) => { const r = await CM.publishBackground(String(id), m || {}); B.broadcast('kiroku'); return r; });
+  reg('cm.publishTheme', (w, e, id, m) => CM.publishTheme(String(id), m || {}));
+  reg('cm.install', async (w, e, id) => { const r = await CM.install(String(id)); B.broadcast('kiroku'); return r; });
+  reg('bg.mine', () => BG.list());
+  reg('bg.add', async () => { const r = await BG.pick(); B.broadcast('kiroku'); return r; });
+  reg('bg.update', (w, e, id, p) => { BG.update(id, p || {}); B.broadcast('kiroku'); });
+  reg('bg.remove', (w, e, id) => { BG.remove(id); B.broadcast('kiroku'); });
+  reg('sfx.pick', (w, e, ev) => SND.pick(ev)); reg('sfx.clear', (w, e, ev) => SND.clear(ev));
+  const UP = require('./updater'); UP.onState(st => B.broadcast('update', st)); UP.init(reg);
   reg('kiroku.hub', () => kiroku.hub(S.get()));
   reg('kiroku.import', (w, e, text) => { const n = kiroku.importLibrary(JSON.parse(text)); B.broadcast('kiroku'); return n; });
   reg('kiroku.reset', () => { kiroku.resetLibrary(); B.broadcast('kiroku'); });
@@ -152,26 +192,67 @@ app.whenReady().then(() => {
   }));
   reg('app.setDefault', () => { app.setAsDefaultProtocolClient('http'); app.setAsDefaultProtocolClient('https'); return app.isDefaultProtocolClient('https'); });
   reg('app.openDataDir', () => shell.openPath(app.getPath('userData')));
-  reg('ext.load', async () => {
-    if (!S.FEAT.extensions) return { error: 'Extensions are available in the Full edition.' };
-    const r = await dialog.showOpenDialog({ properties: ['openDirectory'], message: 'Choose an unpacked Chrome extension folder' });
-    if (r.canceled || !r.filePaths[0]) return null;
-    try {
-      const ext = await session.fromPartition('persist:main').extensions.loadExtension(r.filePaths[0], { allowFileAccess: true });
-      const list = S.get().extensions.filter(x => x.path !== r.filePaths[0]).concat([{ name: ext.name, path: r.filePaths[0] }]); S.patch({ extensions: list });
-      return { ok: ext.name };
-    } catch (err) { return { error: err.message }; }
+  const X = require('./extensions'), V = require('./vpn'), TH = require('./themes'), SY = require('./sync'), IM = require('./importer');
+  reg('ext.list', () => S.get().extensions);
+  reg('ext.install', (w, e, input) => X.installFromStore(input));
+  reg('ext.load', () => X.loadUnpacked());
+  reg('ext.enable', (w, e, id, on) => X.setEnabled(id, !!on));
+  reg('ext.remove', (w, e, id) => X.remove(id));
+  reg('ext.options', (w, e, id) => { const u = X.optionsUrl(id); if (u && w) B.createTab(w, { url: u }); return !!u; });
+  reg('theme.import', () => TH.importFile());
+  reg('theme.save', (w, e, t) => TH.add(t));
+  reg('theme.export', (w, e, id) => TH.exportTheme(id));
+  reg('theme.remove', (w, e, id) => TH.remove(id));
+  reg('vpn.save', (w, e, p) => {
+    p = p || {}; const id = p.id || 'v' + Date.now().toString(36); if (id === V.FREE) return { error: 'The built-in Kitsune Free VPN can’t be edited.' };
+    const prof = { id, name: String(p.name || p.host || 'My VPN').slice(0, 40), scheme: ['http', 'https', 'socks5'].includes(p.scheme) ? p.scheme : 'http', host: String(p.host || '').trim(), port: Math.max(1, Math.min(65535, +p.port || 8080)), user: String(p.user || '') };
+    if (!prof.host) return { error: 'Enter a server address.' };
+    if (typeof p.password === 'string' && p.password) V.setPassword(id, p.password);
+    S.patch({ vpnProfiles: S.get().vpnProfiles.filter(x => x.id !== id).concat([prof]) }); return { ok: id };
   });
-  reg('ext.remove', (w, e, p) => { S.patch({ extensions: S.get().extensions.filter(x => x.path !== p) }); });
+  reg('vpn.remove', (w, e, id) => { if (id === V.FREE) return { error: 'Kitsune Free VPN is built in and can’t be removed. You can switch the VPN off instead.' }; V.setPassword(id, ''); S.patch({ vpnProfiles: S.get().vpnProfiles.filter(x => x.id !== id), vpnActive: S.get().vpnActive === id ? '' : S.get().vpnActive, vpnOn: S.get().vpnActive === id ? false : S.get().vpnOn }); });
+  reg('vpn.free', () => V.freeStatus());
+  reg('vpn.check', (w, e, id) => { const p = S.get().vpnProfiles.find(x => x.id === id); return p ? V.check(p) : { error: 'No such profile' }; });
+  reg('vpn.toggle', (w, e, on) => { const s = S.get(); if (on && !s.vpnProfiles.some(p => p.id === s.vpnActive)) return { error: 'Add and select a VPN server first.' }; S.patch({ vpnOn: !!on }); return { ok: true }; });
+  reg('import.detect', () => IM.detect());
+  reg('import.run', (w, e, o) => IM.run(o || {}).then(r => { B.broadcast('bookmarks'); return r; }));
+  reg('setup.done', () => { S.patch({ setupDone: true }); });
+  reg('acct.status', () => SY.status());
+  reg('acct.auth', (w, e, mode, email, pw, server) => { if (server) S.patch({ accountServer: String(server).replace(/\/+$/, '') }); return SY.auth(mode, email, pw); });
+  reg('acct.signOut', () => SY.signOut());
+  reg('acct.delete', (w, e, pw) => SY.deleteAccount(pw));
+  reg('acct.sync', () => SY.syncNow());
+  SY.onStatus(st => B.broadcast('account', st)); SY.init();
+  V.init(); if (!DEMO.on) V.startFree();
+
+  if (DEMO.on) for (const n of ['import.run', 'acct.auth', 'vpn.save', 'ext.load', 'ext.install', 'theme.import', 'dl.chooseDir', 'app.openDataDir', 'bm.import', 'bm.export']) ipcMain.removeHandler('k:' + n);
+
+  // ---- password vault (kitsune://passwords) + page autofill channel (kpw:*) ----
+  if (!DEMO.on) {
+    const V = require('./vault'); V.init(); V.onStatus(st => B.broadcast('vault', st));
+    const regV = (name, fn) => ipcMain.handle('k:vault.' + name, (e, ...a) => { const u = e.senderFrame ? e.senderFrame.url : ''; if (!u.startsWith('kitsune://passwords/')) throw new Error('untrusted sender'); return fn(e, ...a); });
+    regV('status', () => V.status());
+    regV('create', (e, pw) => V.create(pw)); regV('unlock', (e, pw) => V.unlock(pw)); regV('lock', () => V.lock());
+    regV('changeMaster', (e, a, b) => V.changeMaster(a, b));
+    regV('list', () => V.list()); regV('get', (e, id) => V.get(id)); regV('save', (e, o) => V.save(o || {})); regV('remove', (e, id) => V.remove(id));
+    regV('totps', () => V.totps()); regV('generate', (e, o) => V.generate(o)); regV('strength', (e, pw) => V.strength(pw));
+    regV('copy', (e, id, f) => V.copy(id, f)); regV('importCsv', (e, text) => V.importCsv(text)); regV('exportCsv', (e, pw) => V.exportCsv(pw));
+    regV('parseTotp', (e, s) => { try { const t = V.parseTotp(s); return t ? { ok: true, issuer: t.issuer || '' } : { ok: false }; } catch (err) { return { ok: false, error: err.message }; } });
+    const pageUrl = e => { const f = e.senderFrame; if (!f || !/^https?:/.test(f.url)) throw new Error('bad frame'); const main = e.sender.mainFrame; if (f !== main) { try { if (new URL(f.url).origin !== new URL(main.url).origin) throw new Error('cross-origin frame'); } catch (_) { throw new Error('bad frame'); } } return f.url; };
+    ipcMain.handle('kpw:state', e => { pageUrl(e); const s = V.status(); return { exists: s.exists, locked: !s.unlocked }; });
+    ipcMain.handle('kpw:list', e => V.status().unlocked ? V.pageList(pageUrl(e)) : []);
+    ipcMain.handle('kpw:fill', (e, id, what) => V.pageFill(pageUrl(e), String(id), what === 'code' ? 'code' : 'login'));
+    ipcMain.handle('kpw:generate', e => { pageUrl(e); return V.generate({ length: 20 }); });
+    ipcMain.on('kpw:capture', (e, o) => { try { const u = pageUrl(e); if (!e.sender.session.isPersistent() || !o) return; V.capture(e.sender.id, u, String(o.user || '').slice(0, 200), String(o.pass || '')); } catch (_) {} });
+    ipcMain.handle('kpw:pending', e => { pageUrl(e); return e.senderFrame === e.sender.mainFrame ? V.pendingFor(e.sender.id) : null; });
+    ipcMain.handle('kpw:pendingSave', e => { pageUrl(e); return V.pendingSave(e.sender.id) && true; });
+    ipcMain.handle('kpw:pendingDrop', (e, never) => { pageUrl(e); V.pendingDrop(e.sender.id, !!never); });
+    ipcMain.handle('kpw:unlockPage', e => { pageUrl(e); const w = B.winOfSender(e.sender); if (w) B.cmd(w, 'openPage', 'passwords'); });
+  }
 
   // ---- reactions to settings ----
-  S.bus.on('settings', s => { B.broadcast('settings', s); B.applyThemeChrome(); B.relayoutAll(); });
+  S.bus.on('settings', s => { require('./blocker').load(s.blocker).catch(() => {}); B.broadcast('settings', s); B.applyThemeChrome(); B.relayoutAll(); });
 
-  // reload saved extensions (Full)
-  if (S.FEAT.extensions) {
-    const ses = session.fromPartition('persist:main');
-    for (const x of S.get().extensions) ses.extensions.loadExtension(x.path, { allowFileAccess: true }).catch(() => {});
-  }
 
   // menu: macOS needs an Edit menu for clipboard shortcuts in the omnibox; elsewhere no menu bar.
   Menu.setApplicationMenu(process.platform === 'darwin' ? Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }]) : null);
@@ -188,8 +269,12 @@ app.whenReady().then(() => {
 
   const st = S.session().data;
   const restore = !pendingUrls.length && S.get().restoreSession && st.tabs && st.tabs.length ? st : null;
+  if (!S.get().setupDone && !process.env.KITSUNE_SMOKE && !process.env.KITSUNE_SMOKE_AI && !restore && !process.env.KITSUNE_SMOKE_NEW && !process.env.KITSUNE_SMOKE_V11 && !process.env.KITSUNE_SMOKE_V12) pendingUrls = ['kitsune://setup/'].concat(pendingUrls);
   B.createWindow({ urls: pendingUrls, restore });
   pendingUrls = [];
+  if (process.env.KITSUNE_SMOKE_NEW) require('./smoke-new')().catch(e => { console.error('smoke-new failed', e); app.exit(1); });
+  if (process.env.KITSUNE_SMOKE_V11) require('./smoke-v11')().catch(e => { console.error('smoke-v11 failed', e); app.exit(1); });
+  if (process.env.KITSUNE_SMOKE_V12) require('./smoke-v12')().catch(e => { console.error('smoke-v12 failed', e); app.exit(1); });
   if (process.env.KITSUNE_SMOKE_AI) require('./smoke-ai')().catch(e => { console.error('smoke-ai failed', e); app.exit(1); });
   if (process.env.KITSUNE_SMOKE) require('./smoke')().catch(e => { console.error('smoke failed', e); app.quit(); });
 

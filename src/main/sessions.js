@@ -1,8 +1,10 @@
 'use strict';
+const demo = require('./demo');
 // Per-session privacy plumbing: tracker blocking, HTTPS-only upgrades, GPC/DNT, permissions, downloads.
 const { dialog } = require('electron');
 const S = require('./state');
 const adblock = require('./adblock');
+const blocker = require('./blocker');
 
 const done = new WeakSet();
 const httpsExceptions = new Set();
@@ -38,6 +40,7 @@ function setup(ses, hooks) {
 
   ses.webRequest.onBeforeRequest((d, cb) => {
     const s = S.get();
+    if (demo.blocked(d.url)) return cb({ cancel: true });
     try {
       if (d.resourceType === 'mainFrame' && s.httpsOnly && d.url.startsWith('http://')) {
         const u = new URL(d.url);
@@ -48,6 +51,9 @@ function setup(ses, hooks) {
           return cb({ redirectURL: target });
         }
       }
+      if (s.blocker !== 'off' && blocker.ready()) {
+        return blocker.onBeforeRequest(d, res => { if ((res.cancel || res.redirectURL) && hooks.blocked) hooks.blocked(d.webContentsId); cb(res); });
+      }
       if (adblock.shouldBlock(d.url, d.resourceType, s.blocker)) {
         if (hooks.blocked) hooks.blocked(d.webContentsId);
         return cb({ cancel: true });
@@ -55,6 +61,11 @@ function setup(ses, hooks) {
     } catch (_) { /* fall through */ }
     cb({});
   });
+  ses.webRequest.onHeadersReceived((d, cb) => { if (S.get().blocker !== 'off' && blocker.ready()) blocker.onHeadersReceived(d, cb); else cb({}); });
+  blocker.attachPreload(ses);
+  if (!demo.on) { try { ses.registerPreloadScript({ type: 'frame', filePath: require('path').join(__dirname, 'fill-preload.js') }); } catch (_) {} }
+  if (demo.on) ses.on('will-download', e => e.preventDefault());
+  try { require('./vpn').applyTo(ses); require('./extensions').attach(ses); } catch (_) {}
 
   ses.webRequest.onBeforeSendHeaders((d, cb) => {
     if (S.get().sendGPC) { d.requestHeaders['Sec-GPC'] = '1'; d.requestHeaders['DNT'] = '1'; }

@@ -10,9 +10,11 @@ html, body { overflow: hidden; background: var(--bg); }
 .layer.on { opacity: 1; }
 :root:not([data-anim="off"]) .layer.on.kb { animation: kb var(--kb, 34s) ease-in-out both; }
 @keyframes kb { from { transform: scale(1.02) translate3d(0,0,0); } to { transform: scale(1.14) translate3d(var(--kx, -1.5%), var(--ky, -1%), 0); } }
+.layer video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.layer.vid { inset: 0; }
 .layer.cover { filter: blur(26px) saturate(1.15); }
 #fallback { position: fixed; inset: 0; background: radial-gradient(900px 600px at 20% 20%, var(--glow), transparent 60%), radial-gradient(800px 600px at 85% 80%, color-mix(in srgb, var(--accent2) 30%, transparent), transparent 60%), var(--bg); }
-#scrim { position: fixed; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.28), rgba(0,0,0,.05) 35%, rgba(0,0,0,.5)), radial-gradient(1200px 700px at 50% 45%, transparent 35%, var(--scrim)); pointer-events: none; }
+#scrim { position: fixed; inset: 0; box-shadow: inset 0 0 0 100vmax rgba(0,0,0,var(--bgdim,0)); background: linear-gradient(180deg, rgba(0,0,0,.28), rgba(0,0,0,.05) 35%, rgba(0,0,0,.5)), radial-gradient(1200px 700px at 50% 45%, transparent 35%, var(--scrim)); pointer-events: none; }
 canvas#fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 #ui { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; padding-top: 11vh; transition: opacity .5s, transform .5s; }
 body.hideui #ui, body.hideui #now, body.hideui #ctl { opacity: 0; pointer-events: none; transform: translateY(8px); }
@@ -63,9 +65,9 @@ body.private #priv { display: block; }
   <div id="watching" hidden><h3>Currently watching</h3><div id="wrow"></div></div>
 </div>
 <div id="now" hidden></div>
-<div id="ctl"><button id="prev" title="Previous background (&larr;)"></button><button id="next" title="Next background (&rarr;)"></button><button id="hide" title="Hide interface (H)"></button></div>
+<div id="ctl"><button id="prev" title="Previous background (&larr;)"></button><button id="next" title="Next background (&rarr;)"></button><button id="hide" title="Hide interface (H)"></button><button id="bgs" title="Backgrounds & themes"></button></div>
 <script src="kitsune://assets/icons.js"></script>
-<script src="kitsune://assets/common.js"></script>
+<script src="kitsune://assets/sfx.js"></script><script src="kitsune://assets/common.js"></script>
 <script src="kitsune://assets/particles.js"></script>
 <script>
 const $ = s => document.querySelector(s), call = (n, ...a) => kitsune.call(n, ...a);
@@ -85,9 +87,12 @@ async function dial() {
   try { const hist = await call('hist.list', '', 400); const agg = {}; for (const x of hist) { const h = K.host(x.url); if (h) (agg[h] = agg[h] || { url: x.url.replace(/^(https?:\/\/[^/]+).*/, '$1/'), v: 0, t: x.title }).v += x.visits; } Object.entries(agg).sort((a, b) => b[1].v - a[1].v).slice(0, 8).forEach(([h, o]) => add(h, o.url)); } catch (_) {}
   el.innerHTML = tiles.map((t, i) => `<a class="tile" href="${K.esc(t.url)}" style="animation-delay:${.25 + i * .05}s"><div class="ic"><img src="${K.favicon(t.url)}" onerror="this.outerHTML='<b>${K.esc((t.title || '?')[0].toUpperCase())}</b>'"></div><span>${K.esc(t.title)}</span></a>`).join('');
 }
-function crossfade(url, cover) {
+function motionOk() { return S.animations !== 'off' && !(S.batterySaver && K.runtime && K.runtime.onBattery); }
+function crossfade(url, cover, video) {
   const nxt = front === 'la' ? 'lb' : 'la'; const cur = $('#' + front), n = $('#' + nxt);
-  n.className = 'layer' + (cover ? ' cover' : ''); n.style.backgroundImage = `url("${url}")`;
+  n.className = 'layer' + (cover ? ' cover' : '') + (video ? ' vid' : ''); n.style.backgroundImage = video ? 'none' : `url("${url}")`; n.innerHTML = '';
+  if (video) { const v = document.createElement('video'); v.src = url; v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto'; if (motionOk()) v.autoplay = true; n.appendChild(v); if (motionOk()) v.play().catch(() => {}); }
+  [cur].forEach(c => { const old = c.querySelector('video'); if (old) setTimeout(() => { try { old.pause(); old.removeAttribute('src'); old.load(); } catch (_) {} c.innerHTML = ''; }, 1800); });
   n.style.setProperty('--kx', (Math.random() * 3 - 1.5).toFixed(2) + '%'); n.style.setProperty('--ky', (Math.random() * 2 - 1).toFixed(2) + '%');
   n.style.setProperty('--kb', Math.max(20, (S.bgInterval || 30) + 8) + 's');
   void n.offsetWidth; n.classList.add('on', 'kb'); cur.classList.remove('on'); front = nxt;
@@ -95,7 +100,12 @@ function crossfade(url, cover) {
 const best = x => (x.hd && x.hd.url) || x.banner || null;
 function show(i) {
   if (!list.length) return; idx = (i + list.length) % list.length; const it = list[idx];
-  const url = best(it) || it.cover; if (!url) return show(idx + 1);
+  const url = it.custom ? it.url : (best(it) || it.cover); if (!url) return show(idx + 1);
+  if (it.custom) {
+    const done = () => { if (list[idx] !== it) return; crossfade(url, false, it.type === 'video'); $('#fallback').style.opacity = 0; const now = $('#now'); now.hidden = true; call('accent.set', null); if (it.dim != null) document.documentElement.style.setProperty('--bgdim', it.dim / 100); };
+    if (it.type === 'video') done(); else { const im = new Image(); im.onload = done; im.onerror = () => { list.splice(idx, 1); show(idx); }; im.src = url; }
+    clearTimeout(timer); if (!paused && list.length > 1) timer = setTimeout(() => show(idx + 1), (S.bgInterval || 30) * (it.type === 'video' ? 1.5 : 1) * 1000); return;
+  }
   const im = new Image(); im.onload = () => {
     if (list[idx] !== it) return; crossfade(url, !best(it)); $('#fallback').style.opacity = 0;
     const now = $('#now'); now.hidden = false;
@@ -104,16 +114,16 @@ function show(i) {
   };
   im.onerror = () => { list.splice(idx, 1); show(idx); }; im.src = url;
   // warm the next one
-  const nx = list[(idx + 1) % list.length]; if (nx) { const p = new Image(); p.src = best(nx) || nx.cover || ''; }
+  const nx = list[(idx + 1) % list.length]; if (nx && !nx.custom) { const p = new Image(); p.src = best(nx) || nx.cover || ''; }
   clearTimeout(timer); if (!paused && list.length > 1) timer = setTimeout(() => show(idx + 1), (S.bgInterval || 30) * 1000);
 }
 async function loadBg() {
-  if (!S.bgKiroku) { call('accent.set', null); return; }
+  if (!S.bgKiroku && S.bgMode !== 'mine' && !String(S.theme).startsWith('custom:')) { call('accent.set', null); return; }
   try { list = (await call('kiroku.bg')).filter(x => best(x) || x.cover); } catch (_) { list = []; }
   const withBanner = list.filter(best), rest = list.filter(x => !best(x));
   list = withBanner.concat(rest.slice(0, 4));
   if (list.length) show(0);
-  const w = list.filter(x => x.status === 'watching' && x.cover).slice(0, 7);
+  const w = list.filter(x => !x.custom && x.status === 'watching' && x.cover).slice(0, 7);
   if (w.length) { $('#watching').hidden = false; $('#wrow').innerHTML = w.map((x, i) => `<a class="cw" href="${K.esc(x.watchUrl)}" data-t="${K.esc(x.title)}" style="animation-delay:${.4 + i * .07}s"><img src="${K.esc(x.cover)}" loading="lazy"></a>`).join(''); }
 }
 function fx() { stopFx(); const t = K.particleType(); stopFx = Particles.start($('#fx'), t); }
@@ -127,7 +137,8 @@ function fx() { stopFx(); const t = K.particleType(); stopFx = Particles.start($
   document.addEventListener('k:settings', e => { S = e.detail; $('#eng').textContent = (st.engines[S.searchEngine] || {}).name || ''; dial(); });
   kitsune.on('kiroku', async () => { if (!list.length) return loadBg(); try { const fresh = await call('kiroku.bg'); if (fresh.length !== list.length && !fresh.every(f => list.some(x => x.id === f.id))) return loadBg(); for (const f of fresh) { const o = list.find(x => x.id === f.id); if (o) { o.hd = f.hd; o.cover = f.cover; } } } catch (_) { loadBg(); } });
   $('#sf').addEventListener('submit', e => { e.preventDefault(); const v = $('#q').value.trim(); if (v) call('cmd', 'navigate', v); });
-  $('#next').onclick = () => show(idx + 1); $('#prev').onclick = () => show(idx - 1); $('#hide').onclick = () => document.body.classList.toggle('hideui');
+  $('#next').onclick = () => show(idx + 1); $('#prev').onclick = () => show(idx - 1); $('#bgs').innerHTML = I.palette; $('#bgs').onclick = () => { location.href = 'kitsune://backgrounds/'; }; $('#hide').onclick = () => document.body.classList.toggle('hideui');
+  document.addEventListener('visibilitychange', () => { document.querySelectorAll('.layer video').forEach(v => document.hidden || !motionOk() ? v.pause() : v.play().catch(() => {})); });
   addEventListener('keydown', e => {
     if (document.activeElement === $('#q') && e.key !== 'Escape') return;
     if (e.key === 'ArrowRight') show(idx + 1); if (e.key === 'ArrowLeft') show(idx - 1);

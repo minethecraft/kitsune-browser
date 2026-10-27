@@ -1,0 +1,78 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Welcome to Kitsune</title>
+<link rel="stylesheet" href="kitsune://assets/themes.css"><link rel="stylesheet" href="kitsune://assets/page.css">
+<style>
+.stage { max-width: 760px; margin: 0 auto; padding: 36px 24px 60px; min-height: 100vh; display: flex; flex-direction: column; }
+.dots { display: flex; gap: 8px; justify-content: center; margin: 4px 0 22px; } .dots i { width: 28px; height: 5px; border-radius: 3px; background: var(--bg3); transition: background .3s, width .3s; } .dots i.on { background: var(--accent); width: 44px; } 
+.step { display: none; flex: 1; animation: rise .45s cubic-bezier(.2,.8,.3,1) both; } .step.cur { display: block; }
+.hero { text-align: center; padding: 30px 0 10px; } .hero svg { width: 130px; height: 130px; animation: bob 3.4s ease-in-out infinite; } @keyframes bob { 50% { transform: translateY(-10px) rotate(-3deg); } }
+.hero h1 { justify-content: center; font-size: 40px; } 
+.themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; padding: 12px; } .th { cursor: pointer; border-radius: 14px; border: 2px solid transparent; padding: 6px; text-align: center; transition: transform .15s, border-color .15s; } .th:hover { transform: translateY(-3px); } .th.cur { border-color: var(--accent); }
+.th .pv { height: 70px; border-radius: 10px; position: relative; overflow: hidden; margin-bottom: 6px; } .th .pv i { position: absolute; border-radius: 4px; } .th b { font-size: 13px; }
+.opt { display: flex; align-items: center; gap: 14px; padding: 12px 14px; cursor: pointer; border-radius: 12px; } .opt:hover { background: var(--bg3); } .opt input { accent-color: var(--accent); width: 18px; height: 18px; }
+.nav { display: flex; justify-content: space-between; align-items: center; margin-top: 26px; gap: 10px; }
+.btn { border: 1px solid var(--line); background: var(--bg2); color: var(--fg); padding: 10px 20px; border-radius: 999px; cursor: pointer; font: inherit; font-weight: 600; transition: transform .15s, background .15s; } .btn:hover { transform: translateY(-1px); background: var(--bg3); } .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: transparent; box-shadow: 0 6px 20px var(--glow); } .btn.danger { color: var(--err); }
+.skip { color: var(--muted); cursor: pointer; font-size: 13px; background: none; border: 0; } .skip:hover { color: var(--fg); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 12px; } .chip { display: inline-flex; align-items: center; gap: 6px; background: var(--bg3); border-radius: 999px; padding: 6px 12px; font-size: 13px; }
+.good { color: var(--ok, #6cf5a2); }
+</style></head>
+<body><div class="stage"><div class="dots" id="dots"></div><div id="steps"></div><div id="toast"></div></div>
+<script src="kitsune://assets/icons.js"></script><script src="kitsune://assets/sfx.js"></script><script src="kitsune://assets/common.js"></script>
+<script>
+const $ = s => document.querySelector(s), call = (n, ...a) => kitsune.call(n, ...a);
+const THEMES = { sakura: ['Sakura Dawn', '#2b1830', '#ff8fb8', '#ffc86b'], neon: ['Neon Shibuya', '#0e1027', '#3df0ff', '#ff3df0'], umbra: ['Umbra', '#0b0912', '#a77bff', '#5b8cff'], aqua: ['Aqua Gel', '#0c2233', '#4fd1ff', '#7af5c8'], crimson: ['Crimson Throne', '#1d0b10', '#ff4d5e', '#ffb84d'], dusk: ['Kitsune Dusk', '#1d1630', '#ff9d4d', '#ff6fa5'], hanami: ['Hanami Light', '#ffeff5', '#ff6fa5', '#ffa94d'], rain: ['Rainy Cyber', '#0b1418', '#6cf5c2', '#57b9ff'] };
+let S, F, i = 0, imp = [], acct = {}, picks = {};
+const set = (k, v) => call('settings.set', { [k]: v });
+const toast = t => { const e = $('#toast'); e.textContent = t; e.className = 'on'; clearTimeout(toast.t); toast.t = setTimeout(() => e.className = '', 2500); };
+const STEPS = [
+  { id: 'hi', title: 'Welcome', body: () => `<div class="hero">${I.fox.replace('width="28" height="28"', 'width="130" height="130"')}<h1>Welcome to Kitsune</h1><p class="lead">A light, animated, anime-themed browser. Let’s set it up in about a minute.</p></div>` },
+  { id: 'theme', title: 'Pick a look', body: () => `<h1>Pick a look</h1><p class="lead">You can change this any time, and make your own theme in Settings.</p><div class="card"><div class="themes">${F.themes.map(t => `<div class="th ${S.theme === t ? 'cur' : ''}" data-theme="${t}"><div class="pv" style="background:${THEMES[t][1]}"><i style="left:8px;top:8px;width:46px;height:10px;background:${THEMES[t][2]}"></i><i style="left:8px;top:24px;width:70px;height:8px;background:${THEMES[t][3]};opacity:.8"></i></div><b>${THEMES[t][0]}</b></div>`).join('')}</div></div>
+    <h2>Motion</h2><div class="card"><div class="row"><div class="grow t">Animations</div><div class="seg" data-seg="animations">${[['full', 'Full'], ['reduced', 'Reduced'], ['off', 'Off']].map(([v, l]) => `<button data-v="${v}" class="${v === S.animations ? 'cur' : ''}">${l}</button>`).join('')}</div></div></div>` },
+  { id: 'search', title: 'Search', body: () => `<h1>Search engine</h1><p class="lead">Used in the address bar.</p><div class="card">${Object.entries(S_ENG).map(([k, v]) => `<label class="opt"><input type="radio" name="se" value="${k}" ${S.searchEngine === k ? 'checked' : ''}><span class="t">${K.esc(v.name)}</span></label>`).join('')}</div>` },
+  { id: 'import', title: 'Bring your stuff', body: () => `<h1>Bring your stuff over</h1><p class="lead">Move bookmarks, history and cookies (so you stay signed in) from another browser. Passwords aren’t imported. Close the other browser first.</p>
+    ${!imp.length ? '<div class="card"><div class="empty">No other browsers found. You can import later in Settings.</div></div>' : `<div class="card"><div class="row" style="flex-wrap:wrap"><select id="ib">${imp.map((b, n) => `<option value="${n}">${K.esc(b.name)}</option>`).join('')}</select><select id="ip"></select></div>
+    <label class="opt"><input type="checkbox" id="ibm" checked> Bookmarks</label><label class="opt"><input type="checkbox" id="ih" checked> History</label><label class="opt"><input type="checkbox" id="ic" checked> Cookies &amp; logins</label>
+    <div class="row"><div class="grow d" id="ires"></div><button class="btn primary" id="igo">Import</button></div></div>`}` },
+  { id: 'account', title: 'Account', body: () => `<h1>Sync with an account</h1><p class="lead">Optional. Keep bookmarks, settings and themes in sync between computers.</p><div class="card" id="acct"></div>` },
+  { id: 'shield', title: 'Privacy', body: () => `<h1>Privacy &amp; shields</h1><p class="lead">The ad &amp; tracker blocker is built in. Everything here can be changed in Settings.</p><div class="card">
+    <div class="row"><div class="grow"><div class="t">Ad &amp; tracker blocker</div><div class="d">Blocks ads, trackers and cosmetic clutter</div></div><div class="seg" data-seg="blocker">${[['off', 'Off'], ['standard', 'Standard'], ['strict', 'Strict']].map(([v, l]) => `<button data-v="${v}" class="${v === S.blocker ? 'cur' : ''}">${l}</button>`).join('')}</div></div>
+    <label class="opt"><input type="checkbox" data-bool="httpsOnly" ${S.httpsOnly ? 'checked' : ''}><div><div class="t">HTTPS-only mode</div><div class="d">Upgrade insecure links</div></div></label>
+    <div class="row"><div class="grow d">Have a VPN server (see the <b>vpn-server</b> kit)? Add it later in Settings → VPN to route the whole browser through it.</div></div></div>` },
+  { id: 'anime', title: 'Anime', body: () => `<h1>Anime backgrounds</h1><p class="lead">New tabs show artwork from the anime in your Kiroku library.</p><div class="card">
+    <label class="opt"><input type="checkbox" data-bool="bgKiroku" ${S.bgKiroku ? 'checked' : ''}><div><div class="t">Use my Kiroku library</div></div></label>
+    <label class="opt"><input type="checkbox" data-bool="hdBackgrounds" ${S.hdBackgrounds ? 'checked' : ''}><div><div class="t">HD artwork</div><div class="d">Sharpest covers available</div></div></label>
+    <label class="opt"><input type="checkbox" data-bool="adaptiveAccent" ${S.adaptiveAccent ? 'checked' : ''}><div><div class="t">Tint the browser with the background’s colours</div></div></label>
+    <div class="row"><div class="grow t">Your name</div><input type="text" id="nm" value="${K.esc(S.displayName)}" placeholder="optional" style="width:200px"></div></div>` },
+  { id: 'done', title: 'Done', body: () => `<div class="hero">${I.fox.replace('width="28" height="28"', 'width="130" height="130"')}<h1>You’re all set</h1><p class="lead">Press <b>Ctrl/Cmd+T</b> for a new tab, <b>Ctrl/Cmd+Shift+A</b> for the AI assistant.</p></div>
+    <div class="card"><div class="row"><div class="grow"><div class="t">Make Kitsune your default browser</div></div><button class="btn" id="mkdef">Set as default</button></div></div>` }
+];
+let S_ENG = {};
+function render() {
+  $('#dots').innerHTML = STEPS.map((_, n) => `<i class="${n <= i ? 'on' : ''}"></i>`).join('');
+  const st = STEPS[i];
+  $('#steps').innerHTML = `<div class="step cur">${st.body()}<div class="nav"><div>${i > 0 && st.id !== 'done' ? '<button class="btn" id="bk">Back</button>' : ''}</div><div style="display:flex;gap:12px;align-items:center">${['import', 'account'].includes(st.id) ? '<button class="skip" id="sk">Skip</button>' : ''}<button class="btn primary" id="nx">${st.id === 'done' ? 'Start browsing' : st.id === 'hi' ? 'Let’s go' : 'Continue'}</button></div></div></div>`;
+  bind(st);
+}
+function bind(st) {
+  const on = (s, f) => { const e = $(s); if (e) e.onclick = f; };
+  on('#bk', () => { i--; render(); }); on('#sk', () => { i++; render(); });
+  on('#nx', async () => { if (st.id === 'search') { const r = document.querySelector('input[name=se]:checked'); if (r) set('searchEngine', r.value); } if (st.id === 'anime') set('displayName', $('#nm').value.trim()); if (st.id === 'done') { await call('setup.done'); location.href = 'kitsune://newtab/'; return; } i++; render(); });
+  document.querySelectorAll('[data-theme]').forEach(t => t.onclick = () => { set('theme', t.dataset.theme); document.querySelectorAll('.th').forEach(x => x.classList.toggle('cur', x === t)); });
+  document.querySelectorAll('[data-seg]').forEach(g => g.onclick = e => { const b = e.target.closest('button'); if (!b) return; set(g.dataset.seg, b.dataset.v); g.querySelectorAll('button').forEach(x => x.classList.toggle('cur', x === b)); });
+  document.querySelectorAll('[data-bool]').forEach(c => c.onchange = () => set(c.dataset.bool, c.checked));
+  on('#mkdef', async () => { await call('app.setDefault'); toast('Your system may ask you to confirm'); });
+  if (st.id === 'import' && imp.length) {
+    const fill = () => { $('#ip').innerHTML = imp[$('#ib').value].profiles.map(p => `<option value="${K.esc(p.id)}">${K.esc(p.name)}</option>`).join(''); }; $('#ib').onchange = fill; fill();
+    on('#igo', async () => { $('#ires').textContent = 'Importing…'; $('#igo').disabled = true; try { const r = await call('import.run', { browser: imp[$('#ib').value].id, profile: $('#ip').value, bookmarks: $('#ibm').checked, history: $('#ih').checked, cookies: $('#ic').checked }); $('#ires').innerHTML = `<span class="good">Done.</span> ${r.bookmarks} bookmarks, ${r.history} history items, ${r.cookies} cookies.` + (r.cookiesSkipped ? ` ${r.cookiesSkipped} cookies couldn’t be moved (sign in again there).` : ''); } catch (e) { $('#ires').textContent = 'Import failed: ' + e.message; } $('#igo').disabled = false; });
+  }
+  if (st.id === 'account') acctUI();
+}
+async function acctUI() {
+  const box = $('#acct'); if (!box) return; acct = await call('acct.status');
+  if (acct.signedIn) { box.innerHTML = `<div class="row"><div class="grow"><div class="t good">Signed in as ${K.esc(acct.email)}</div><div class="d">Your data will sync in the background.</div></div></div>`; return; }
+  box.innerHTML = `<div class="row" style="flex-wrap:wrap"><input type="text" id="ae" placeholder="Email" style="width:220px"><input type="password" id="apw" placeholder="Password (8+ characters)" style="width:200px"><button class="btn primary" id="ali">Sign in</button><button class="btn" id="arg">Create account</button></div><div class="row"><div class="d" id="am">No email verification or password reset yet, so keep your password safe.</div></div>`;
+  const go = async m => { $('#am').textContent = 'Working…'; try { await call('acct.auth', m, $('#ae').value, $('#apw').value); acctUI(); } catch (e) { $('#am').textContent = String(e.message || e).replace(/^Error invoking remote method '[^']*': (Error: )?/, ''); } };
+  $('#ali').onclick = () => go('login'); $('#arg').onclick = () => go('register');
+}
+(async () => { const st = await K.init(); S = st.settings; F = st.features; S_ENG = st.engines || {}; try { imp = await call('import.detect'); } catch (_) {} document.addEventListener('k:settings', e => { S = e.detail; }); render(); })();
+</script></body></html>

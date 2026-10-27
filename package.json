@@ -1,8 +1,8 @@
 {
   "name": "kitsune-browser",
   "productName": "Kitsune",
-  "version": "1.0.0",
-  "description": "Kitsune — a light, animated, anime-themed browser inspired by Opera and Firefox.",
+  "version": "1.1.1",
+  "description": "Kitsune \u2014 a light, animated, anime-themed browser inspired by Opera and Firefox.",
   "author": "Mr. Vibe",
   "main": "src/main/main.js",
   "scripts": {
@@ -75,7 +75,10 @@
         "AppImage"
       ],
       "icon": "build/icon.png",
-      "category": "Network"
+      "category": "Network",
+      "executableName": "kitsune",
+      "maintainer": "Kitsune <noreply@kitsune.app>",
+      "syncDesktopName": true
     },
     "protocols": [
       {
@@ -85,6 +88,18 @@
           "https"
         ]
       }
-    ]
-  }
+    ],
+    "publish": {
+      "provider": "generic",
+      "url": "https://kitsune.zeabur.app/updates"
+    },
+    "afterPack": "scripts/after-pack.js"
+  },
+  "dependencies": {
+    "@ghostery/adblocker-electron": "^2.20.1",
+    "@ghostery/adblocker-electron-preload": "^2.20.1",
+    "cross-fetch": "^4.1.0",
+    "fflate": "^0.8.3"
+  },
+  "desktopName": "kitsune.desktop"
 }

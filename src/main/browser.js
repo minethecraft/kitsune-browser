@@ -9,7 +9,7 @@ const downloads = require('./downloads');
 const { READER, PIP } = require('./scripts');
 
 const PRELOAD = path.join(__dirname, '../preload/preload.js');
-const TAB_H = 38, TOOL_H = 46, BAR_H = 32, FIND_H = 46, SIDE_W = 54;
+const TAB_H = 46, TOOL_H = 46, BAR_H = 32, FIND_H = 46, SIDE_W = 54, SIDE_OPEN_W = 224;
 const MAC = process.platform === 'darwin', WIN = process.platform === 'win32';
 
 const wins = new Map();            // id -> win
@@ -65,7 +65,7 @@ function layout(win) {
   const th = topH(win), sw = sideW(win);
   win.top.setBounds({ x: 0, y: 0, width: w, height: win.htmlFull ? 0 : Math.min(h, Math.max(th, win.expandH || 0)) });
   win.top.setVisible(!win.htmlFull);
-  if (win.side) { win.side.setBounds({ x: 0, y: th, width: sw, height: Math.max(h - th, 0) }); win.side.setVisible(sw > 0); }
+  if (win.side) { win.side.setBounds({ x: 0, y: th, width: sw ? (win.sideOpen ? SIDE_OPEN_W : sw) : 0, height: Math.max(h - th, 0) }); win.side.setVisible(sw > 0); }
   const aw = aiW(win);
   if (win.ai) { win.ai.setBounds({ x: Math.max(w - aw, 0), y: th, width: aw, height: Math.max(h - th, 0) }); win.ai.setVisible(aw > 0); }
   const cx = sw, cy = th, cw = Math.max(w - sw - aw, 0), ch = Math.max(h - th, 0);
@@ -325,7 +325,7 @@ function cycle(win, dir) {
 // ---------------------------------------------------------------- windows
 function createWindow(o = {}) {
   const id = ++winSeq;
-  const meta = S.THEME_META[S.get().theme];
+  const meta = S.themeMeta(S.get().theme, S.get().customThemes);
   const opts = { width: 1380, height: 880, minWidth: 760, minHeight: 480, show: false, backgroundColor: meta.bg, title: 'Kitsune', icon: path.join(S.SRC, '../build/icon.png') };
   const offset = (wins.size % 8) * 28;
   const prev = focusedWin();
@@ -333,7 +333,7 @@ function createWindow(o = {}) {
   if (MAC) { opts.titleBarStyle = 'hidden'; opts.trafficLightPosition = { x: 14, y: 12 }; }
   else if (WIN) { opts.titleBarStyle = 'hidden'; opts.titleBarOverlay = { color: meta.bg, symbolColor: meta.fg, height: TAB_H }; }
   const base = new BaseWindow(opts);
-  const view = () => new WebContentsView({ webPreferences: { preload: PRELOAD, contextIsolation: true, sandbox: true, nodeIntegration: false } });
+  const view = () => new WebContentsView({ webPreferences: { preload: PRELOAD, contextIsolation: true, sandbox: true, nodeIntegration: false, autoplayPolicy: 'no-user-gesture-required' } });
   const top = view(); top.setBackgroundColor('#00000000');
   const side = S.FEAT.sidebar ? view() : null; if (side) side.setBackgroundColor('#00000000');
   const ai = S.FEAT.assistant ? view() : null; if (ai) ai.setBackgroundColor('#00000000');
@@ -373,7 +373,7 @@ function createWindow(o = {}) {
 }
 
 function applyThemeChrome() {
-  const meta = S.THEME_META[S.get().theme];
+  const meta = S.themeMeta(S.get().theme, S.get().customThemes);
   for (const w of wins.values()) {
     try { w.base.setBackgroundColor(meta.bg); if (WIN) w.base.setTitleBarOverlay({ color: meta.bg, symbolColor: meta.fg, height: TAB_H }); } catch (_) {}
   }
@@ -436,7 +436,7 @@ const PALETTE = [
   ['reader', 'Toggle reader view'], ['split', 'Toggle split view'], ['pip', 'Picture-in-picture'], ['screenshot', 'Take screenshot'],
   ['bookmark', 'Bookmark this page'], ['find', 'Find in page'], ['print', 'Print'], ['pdf', 'Save page as PDF'], ['devtools', 'Developer tools'],
   ['viewSource', 'View page source'], ['fullscreen', 'Toggle full screen'], ['sleepOthers', 'Sleep other tabs (free memory)'], ['closeOthers', 'Close other tabs'],
-  ['nextTheme', 'Next theme'], ['toggleSidebar', 'Toggle sidebar'], ['assistant', 'Toggle AI assistant'], ['zoomReset', 'Reset zoom'],
+  ['nextTheme', 'Next theme'], ['toggleSidebar', 'Toggle sidebar'], ['zoomReset', 'Reset zoom'],
   ['page:anime', 'Open Anime Hub'], ['page:bookmarks', 'Open bookmarks'], ['page:history', 'Open history'], ['page:downloads', 'Open downloads'], ['page:settings', 'Open settings']
 ];
 
@@ -664,6 +664,7 @@ function startSleeper() {
 module.exports = {
   activeTab, tabOf, wake, wins, tabByWc, createWindow, createTab, focusedWin, winOfSender, cmd, navigate, suggest, emit, layout, relayoutAll, broadcast, broadcastDownloads,
   activateTab, closeTab, moveTab, tabContextMenu, snapshot, applyThemeChrome, startSleeper, saveSession, clearHistory, toast, PALETTE,
+  setSideOpen(win, on) { on = !!on; if (win.sideOpen === on) return; win.sideOpen = on; if (on && win.side) { win.base.contentView.addChildView(win.side); win.base.contentView.addChildView(win.top); } layout(win); },
   setExpand(win, h) { win.expandH = h | 0; layout(win); },
   findText(win, text, opts = {}) { const a = activeTab(win); if (!a || !a.view) return; win.lastFind = text; if (!text) { a.view.webContents.stopFindInPage('clearSelection'); send(win.top, 'find-result', { active: 0, total: 0 }); return; } a.view.webContents.findInPage(text, { forward: opts.forward !== false, findNext: !!opts.next, matchCase: !!opts.matchCase }); },
   stats() { let tabs = 0, sleeping = 0; for (const w of wins.values()) for (const t of w.tabs) { tabs++; if (t.sleeping) sleeping++; } return { tabs, sleeping, windows: wins.size }; }

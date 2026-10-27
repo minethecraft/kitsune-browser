@@ -14,8 +14,8 @@ const LITE = EDITION === 'lite';
 
 const ALL_THEMES = ['sakura', 'neon', 'umbra', 'aqua', 'crimson', 'dusk', 'hanami', 'rain'];
 const FEAT = LITE
-  ? { assistant: true, sidebar: false, containers: false, split: false, extensions: false, particles: false, themes: ['sakura', 'umbra', 'hanami'] }
-  : { assistant: true, sidebar: true, containers: true, split: true, extensions: true, particles: true, themes: ALL_THEMES };
+  ? { assistant: false, sidebar: false, containers: false, split: false, extensions: false, particles: false, themes: ['sakura', 'umbra', 'hanami'] }
+  : { assistant: false, sidebar: true, containers: true, split: true, extensions: true, particles: true, themes: ALL_THEMES };
 
 // title-bar overlay colours per theme (Windows caption buttons) + light/dark
 const THEME_META = {
@@ -24,6 +24,11 @@ const THEME_META = {
   hanami: { bg: '#ffe3ee', fg: '#3a2540' }, rain: { bg: '#0b1418', fg: '#d3fff0' }
 };
 
+const themeMeta = (name, list) => {
+  if (THEME_META[name]) return THEME_META[name];
+  const c = (list || []).find(t => 'custom:' + t.id === name);
+  return c ? { bg: c.bg, fg: c.fg } : THEME_META.sakura;
+};
 const SEARCH_ENGINES = {
   duckduckgo: { name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q=%s' },
   google: { name: 'Google', url: 'https://www.google.com/search?q=%s' },
@@ -62,6 +67,20 @@ const DEFAULTS = {
   kirokuUrl: '',
   sidebarOn: true,
   zoomDefault: 0,
+  updateServer: '',               // blank = same server as the account server
+  autoUpdateCheck: true,
+  setupDone: false,
+  accountServer: 'https://kitsune.zeabur.app',
+  accountEmail: '',
+  syncOn: true,
+  syncWhat: { bookmarks: true, settings: true, history: false, pins: true, themes: true, extensions: true },
+  vpnOn: false,
+  vpnActive: '',
+  vpnProfiles: [],                // {id,name,scheme,host,port,user}  (password lives in the encrypted secret store)
+  vpnFreeInit: false,             // set once the built-in free VPN has been switched on by default
+  vpnBypass: '',                  // comma-separated hosts that skip the VPN
+  vpnWebrtc: true,
+  customThemes: [],               // {id,name,bg,bg2,bg3,fg,muted,accent,accent2,image?,particles?}
   nimbusServer: 'https://nimbus.zeabur.app',
   nimbusModel: '',
   aiMode: 'assistant',            // assistant | cowork
@@ -83,7 +102,14 @@ const DEFAULTS = {
     { title: 'GitHub', url: 'https://github.com/' }
   ],
   extensions: [],
-  sitePerms: {}
+  sitePerms: {},
+  bgPicks: [],                    // anime the user added from the picker: [{id,t}]
+  bgHidden: [],                   // anime ids to leave out of backgrounds
+  bgMode: 'mix',                  // mix | anime | mine
+  sfx: { pack: 'off', volume: 0.5, hover: false, custom: {} },
+  communityServer: '',
+  vaultAutoLock: 15,
+  vaultOffer: true
 };
 
 const storage = require('./storage');
@@ -98,7 +124,7 @@ function init() {
   sessionStore = storage.open('session', { tabs: [], active: 0 });
   // sanitise
   const s = settingsStore.data;
-  if (!FEAT.themes.includes(s.theme)) s.theme = 'sakura';
+  if (!FEAT.themes.includes(s.theme) && !(String(s.theme).startsWith('custom:') && (s.customThemes || []).some(t => 'custom:' + t.id === s.theme))) s.theme = 'sakura';
   if (!bookmarksStore.data.items.length) {
     bookmarksStore.data.items = [
       { id: 'b1', title: 'Aniwatch', url: 'https://aniwatch.zeabur.app/', added: Date.now(), bar: true },
@@ -111,10 +137,11 @@ function init() {
 const get = () => settingsStore.data;
 function patch(p) {
   const s = settingsStore.data;
-  for (const k of Object.keys(p)) {
+  const keys = Object.keys(p).sort((a, b) => (a === 'customThemes' ? -1 : b === 'customThemes' ? 1 : 0));
+  for (const k of keys) {
     if (!(k in DEFAULTS)) continue;
     let v = p[k];
-    if (k === 'theme' && !FEAT.themes.includes(v)) continue;
+    if (k === 'theme' && !FEAT.themes.includes(v) && !(typeof v === 'string' && v.startsWith('custom:') && (s.customThemes || []).some(t => 'custom:' + t.id === v))) continue;
     if (typeof DEFAULTS[k] !== typeof v && !(Array.isArray(DEFAULTS[k]) && Array.isArray(v))) continue;
     if (k === 'bgInterval') v = Math.max(8, Math.min(600, v | 0));
     if (k === 'sleepMinutes') v = Math.max(0, Math.min(240, v | 0));
@@ -129,7 +156,7 @@ function patch(p) {
 }
 
 module.exports = {
-  EDITION, LITE, FEAT, THEME_META, SEARCH_ENGINES, KEYWORDS, DEFAULTS, bus, runtime, init, get, patch,
+  EDITION, LITE, FEAT, THEME_META, themeMeta, SEARCH_ENGINES, KEYWORDS, DEFAULTS, bus, runtime, init, get, patch,
   bookmarks: () => bookmarksStore, history: () => historyStore, session: () => sessionStore,
   SRC: path.join(__dirname, '..'), get app() { return app; }
 };

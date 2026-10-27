@@ -24,7 +24,7 @@ section { display: none; animation: rise .4s cubic-bezier(.2,.8,.3,1) both; } se
   <main id="main"></main>
 </div>
 <div id="toast"></div>
-<script src="kitsune://assets/icons.js"></script><script src="kitsune://assets/common.js"></script>
+<script src="kitsune://assets/icons.js"></script><script src="kitsune://assets/sfx.js"></script><script src="kitsune://assets/common.js"></script>
 <script>
 const $ = s => document.querySelector(s), call = (n, ...a) => kitsune.call(n, ...a);
 let S, F, st, tab = (location.hash || '#appearance').slice(1);
@@ -37,7 +37,9 @@ const sel = (k, opts, cur) => `<select data-sel="${k}">${opts.map(([v, l]) => `<
 const seg = (k, opts, cur) => `<div class="seg" data-seg="${k}">${opts.map(([v, l]) => `<button data-v="${v}" class="${v === cur ? 'cur' : ''}">${l}</button>`).join('')}</div>`;
 
 const SECTIONS = {
-  appearance: ['Appearance', () => `<h2>Theme</h2><div class="card"><div class="themes">${F.themes.map(t => `<div class="th ${S.theme === t ? 'cur' : ''}" data-theme="${t}"><div class="pv" style="background:${THEMES[t][1]}"><i style="left:8px;top:8px;width:46px;height:10px;background:${THEMES[t][2]}"></i><i style="left:8px;top:24px;width:70px;height:8px;background:${THEMES[t][3]};opacity:.8"></i><i style="right:8px;bottom:8px;width:18px;height:18px;background:${THEMES[t][2]};opacity:.55"></i></div><b>${THEMES[t][0]}</b></div>`).join('')}</div></div>
+  appearance: ['Appearance', () => `<h2>Theme</h2><div class="card"><div class="themes">${F.themes.map(t => `<div class="th ${S.theme === t ? 'cur' : ''}" data-theme="${t}"><div class="pv" style="background:${THEMES[t][1]}"><i style="left:8px;top:8px;width:46px;height:10px;background:${THEMES[t][2]}"></i><i style="left:8px;top:24px;width:70px;height:8px;background:${THEMES[t][3]};opacity:.8"></i><i style="right:8px;bottom:8px;width:18px;height:18px;background:${THEMES[t][2]};opacity:.55"></i></div><b>${THEMES[t][0]}</b></div>`).join('')}${(S.customThemes||[]).map(t => `<div class="th ${S.theme === 'custom:' + t.id ? 'cur' : ''}" data-theme="custom:${t.id}"><div class="pv" style="background:${t.bg}"><i style="left:8px;top:8px;width:46px;height:10px;background:${t.accent}"></i><i style="left:8px;top:24px;width:70px;height:8px;background:${t.accent2};opacity:.8"></i><i style="right:8px;bottom:8px;width:18px;height:18px;background:${t.accent};opacity:.55"></i></div><b>${K.esc(t.name)}</b></div>`).join('')}</div>
+    <div class="row"><div class="grow d">Make your own, or import a Firefox / Chrome theme (.xpi, .zip, .crx, manifest) or a Kitsune theme file.</div><button class="btn primary" id="thNew">Theme Studio…</button><button class="btn" id="thImp">Import…</button></div></div>
+    <h2>Backgrounds & sounds</h2><div class="card">${row('Backgrounds', 'Pick more anime, add your own images and videos, browse the community', '<button class="btn" id="bgOpen">Open…</button>')}${row('Interaction sounds', 'Clicks, tabs and downloads. Make your own pack in Theme Studio.', sel('sfxpack', [['off', 'Off'], ['soft', 'Soft pop'], ['chime', 'Chimes'], ['arcade', 'Arcade'], ['drop', 'Water drops'], ['katana', 'Katana'], ['retro', 'Retro']], (S.sfx || {}).pack || 'off'))}${row('Sound volume', '', `<input type="range" min="0" max="100" value="${Math.round(((S.sfx || {}).volume == null ? .5 : S.sfx.volume) * 100)}" id="sfxvol" style="width:160px">`)}</div>
     <h2>Motion</h2><div class="card">${row('Animation level', 'Reduced keeps transitions, drops looping effects. Off disables everything.', seg('animations', [['full', 'Full'], ['reduced', 'Reduced'], ['off', 'Off']], S.animations))}
     ${row('Battery saver', 'Automatically reduce animations when unplugged', tog('batterySaver', S.batterySaver))}
     ${F.particles ? row('Particles', 'Falling petals, embers, snow, rain or fireflies on the new tab page', sel('particles', [['auto', 'Match theme'], ['sakura', 'Sakura petals'], ['ember', 'Embers'], ['snow', 'Snow'], ['rain', 'Neon rain'], ['firefly', 'Fireflies'], ['none', 'None']], S.particles)) : ''}</div>
@@ -58,6 +60,7 @@ const SECTIONS = {
     <h2>Downloads</h2><div class="card">${row('Save files to', K.esc(S.downloadDir || 'Your Downloads folder'), '<button class="btn" id="dlDir">Change…</button>')}</div>`],
 
   privacy: ['Privacy & Security', () => `<h2>Tracking protection</h2><div class="card">${row('Blocker level', 'Standard blocks known ad & tracker hosts. Strict also matches common ad URL patterns (may break some sites).', seg('blocker', [['off', 'Off'], ['standard', 'Standard'], ['strict', 'Strict']], S.blocker))}
+    ${row('Engine status', '<span id="blkst">Checking…</span>', '<span></span>')}
     ${row('HTTPS-only mode', 'Upgrade http:// pages to https:// and fall back only if the site has no secure version', tog('httpsOnly', S.httpsOnly))}
     ${row('Send Global Privacy Control & Do Not Track', '', tog('sendGPC', S.sendGPC))}</div>
     <h2>Clear data</h2><div class="card"><div class="chips" style="padding-top:14px"><label class="chip"><input type="checkbox" id="c-cookies" checked> Cookies & site data</label><label class="chip"><input type="checkbox" id="c-cache" checked> Cache</label><label class="chip"><input type="checkbox" id="c-history"> History</label><label class="chip"><input type="checkbox" id="c-downloads"> Download list</label><label class="chip"><input type="checkbox" id="c-permissions"> Site permissions</label></div>
@@ -76,16 +79,25 @@ const SECTIONS = {
     <h2>Sidebar pins</h2><div class="card"><div class="chips">${S.pins.map((p, i) => `<span class="chip"><img class="favi" src="${K.favicon(p.url)}" style="width:14px;height:14px">${K.esc(p.title)}<button class="x" data-delp="${i}">✕</button></span>`).join('')}</div>
     <div class="row"><input type="text" id="pn" placeholder="Title" style="width:140px"><input type="text" id="pu" placeholder="https://…" style="flex:1"><button class="btn" id="addp">Pin</button></div></div>`],
 
-  extensions: ['Extensions', () => `<h2>Chrome extensions</h2><div class="card">${F.extensions ? `<div class="chips">${S.extensions.map(x => `<span class="chip">${K.esc(x.name)}<button class="x" data-delx="${K.esc(x.path)}">✕</button></span>`).join('') || '<span class="d">No extensions loaded.</span>'}</div>
-    <div class="row"><div class="grow d">Load an unpacked Chrome extension folder (Manifest V3). Electron implements a subset of the extension APIs, so simple content-script extensions work best.</div><button class="btn primary" id="lx">Load unpacked…</button></div>` : '<div class="empty">Extensions are part of the Full edition.</div>'}</div>`],
+  extensions: ['Extensions', () => `<h2>Chrome extensions</h2><div class="card">${F.extensions ? `<div id="xl">${(S.extensions||[]).map(x => `<div class="row"><div class="grow"><div class="t">${K.esc(x.name)} <span class="pill">${K.esc(x.version||'')}</span></div><div class="d">${x.mv === 3 ? 'Manifest V3' : 'Manifest V2'}</div></div>${x.options ? `<button class="btn" data-xopt="${x.id}">Options</button>` : ''}${tog('x:' + x.id, x.enabled !== false)}<button class="x" data-delx="${x.id}">✕</button></div>`).join('') || '<div class="row"><span class="d">No extensions installed.</span></div>'}</div>
+    <div class="row"><input type="text" id="xs" placeholder="Chrome Web Store link or extension ID" style="flex:1"><button class="btn primary" id="xi">Install</button></div>
+    <div class="row"><div class="grow d">Installs straight from the Chrome Web Store. Electron supports a subset of the extension APIs, so content-script style extensions (dark mode, SponsorBlock-style, translators, password-manager autofill basics) work best; some will not load.</div><button class="btn" id="lx">Load unpacked…</button></div>` : '<div class="empty">Extensions are part of the Full edition.</div>'}</div>`],
 
-  data: ['Bookmarks & Data', () => `<h2>Bookmarks</h2><div class="card"><div class="row"><div class="grow d">Move bookmarks from Firefox, Opera or Chrome with an HTML export.</div><button class="btn" id="bmi">Import…</button><button class="btn" id="bme">Export…</button></div></div>
+  account: ['Account & Sync', () => `<h2>Kitsune account</h2><div class="card" id="acct">Loading…</div>
+    <h2>What to sync</h2><div class="card">${[['bookmarks','Bookmarks'],['settings','Settings'],['pins','Sidebar pins & containers'],['themes','Custom themes'],['history','History (last 1,500 pages)'],['extensions','Extensions (re-installed from the Web Store)']].map(([k,l]) => row(l,'',tog('sync:'+k, !!(S.syncWhat||{})[k]))).join('')}
+    <div class="row"><div class="grow d">Synced data is stored on the Kitsune server you sign in to (set below). Passwords are never synced or imported. Data is not end-to-end encrypted, so only use a server you run or trust.</div></div></div>
+    <h2>Server</h2><div class="card">${row('Account server','Your Zeabur site',`<input type="text" data-txt="accountServer" value="${K.esc(S.accountServer)}" style="width:300px">`)}</div>`],
+
+  vpn: ['VPN', () => `<h2>Browser VPN</h2><div class="card">${row('Route Kitsune through my VPN', 'Everything in this browser uses the selected server. If the server is unreachable, pages fail instead of leaking your real address (kill switch).', tog('vpn:on', S.vpnOn))}
+    ${row('Block WebRTC IP leaks', 'Stops sites from discovering your real IP through WebRTC while the VPN is on', tog('vpnWebrtc', S.vpnWebrtc))}
+    ${row('Skip the VPN for', 'Space or comma separated hosts, e.g. <code>*.example.com</code>', `<input type="text" data-txt="vpnBypass" value="${K.esc(S.vpnBypass)}" style="width:240px">`)}</div>
+    <h2>Servers</h2><div class="card">${(S.vpnProfiles||[]).map(p => `<div class="row"><div class="grow"><div class="t">${K.esc(p.name)}${p.builtin ? ' <span class="pill">Free for everyone</span>' : ''}</div><div class="d">${p.builtin ? 'Included with Kitsune. On by default; switch the VPN off above if you don’t want it.' : p.scheme + '://' + K.esc(p.host) + ':' + p.port + (p.user ? ' · ' + K.esc(p.user) : '')}<span id="vc-${p.id}"></span></div></div><button class="btn ${S.vpnActive === p.id ? 'primary' : ''}" data-vuse="${p.id}">${S.vpnActive === p.id ? 'Selected' : 'Use'}</button><button class="btn" data-vchk="${p.id}">Test</button>${p.builtin ? '' : `<button class="x" data-vdel="${p.id}">✕</button>`}</div>`).join('') || '<div class="row"><span class="d">No servers yet. Add one below.</span></div>'}
+    <div class="row" style="flex-wrap:wrap"><input type="text" id="vn" placeholder="Name" style="width:120px"><select id="vs"><option>http</option><option>https</option><option>socks5</option></select><input type="text" id="vh" placeholder="host" style="width:170px"><input type="number" id="vp" placeholder="port" style="width:80px" value="8080"><input type="text" id="vu" placeholder="username" style="width:110px"><input type="password" id="vw" placeholder="password" style="width:110px"><button class="btn primary" id="vadd">Add</button></div>
+    <div class="row"><div class="grow d">This is a proxy VPN for the browser only (not system-wide). Chromium cannot log in to SOCKS5 proxies, so use <b>http</b> or <b>https</b> with a username and password; the <code>vpn-server</code> kit that comes with Kitsune sets one up on any VPS or Zeabur.</div></div></div>`],
+
+  data: ['Bookmarks & Data', () => `<h2>Import from another browser</h2><div class="card"><div id="imp">Looking for browsers…</div></div><h2>Bookmarks</h2><div class="card"><div class="row"><div class="grow d">Move bookmarks from Firefox, Opera or Chrome with an HTML export.</div><button class="btn" id="bmi">Import…</button><button class="btn" id="bme">Export…</button></div></div>
     <h2>Profile folder</h2><div class="card"><div class="row"><div class="grow d" id="ud"></div><button class="btn" id="od">Open folder</button></div></div>`],
 
-  assistant: ['AI Assistant', () => !F.assistant ? '<h2>AI Assistant</h2><div class="card"><div class="empty">Not available in this edition.</div></div>' : `<h2>Nimbus</h2><div class="card">${row('Nimbus server', 'Where your assistant runs', `<input type="text" data-txt="nimbusServer" value="${K.esc(S.nimbusServer)}" style="width:300px">`)}
-    ${row('API key', '<span id="keyst">Checking…</span> Stored encrypted on this computer.', `<input type="password" id="aikey" placeholder="Paste key" style="width:220px"><button class="btn" id="aisave">Save</button><button class="btn danger" id="aiclear">Remove</button>`)}
-    ${row('Include current page automatically', 'Sends the visible text of the page you are on with each question (it only goes to your Nimbus server)', tog('aiPageContext', S.aiPageContext))}</div>
-    <h2>How it works</h2><div class="card"><div class="row"><div class="d"><b>Assistant</b> answers questions about the page, your tabs, extensions and Kitsune itself — read only.<br><b>Co-work</b> can click, type, scroll and open tabs for you, but asks before <i>every</i> action and never types into password fields. Open it with Ctrl/Cmd+Shift+A.</div></div></div>`],
   about: ['About', () => `<h2>Kitsune</h2><div class="card" id="aboutc"></div>`]
 };
 
@@ -102,7 +114,7 @@ function bind() {
   document.querySelectorAll('[data-seg]').forEach(g => g.onclick = e => { const b = e.target.closest('button'); if (b) set(g.dataset.seg, b.dataset.v); });
   document.querySelectorAll('[data-txt]').forEach(i => i.onchange = () => { set(i.dataset.txt, i.value.trim()); toast('Saved'); });
   document.querySelectorAll('[data-num]').forEach(i => i.onchange = () => { set(i.dataset.num, parseInt(i.value, 10) || 0); toast('Saved'); });
-  document.querySelectorAll('[data-theme]').forEach(t => t.onclick = () => set('theme', t.dataset.theme));
+  document.querySelectorAll('[data-theme]').forEach(t => { t.onclick = () => set('theme', t.dataset.theme); if (t.dataset.theme.startsWith('custom:')) t.ondblclick = () => { location.href = 'kitsune://studio/#edit:' + t.dataset.theme.slice(7); }; });
   const on = (id, fn) => { const e = $(id); if (e) e.onclick = fn; };
   on('#mkdef', async () => { const ok = await call('app.setDefault'); toast(ok ? 'Kitsune is now your default browser' : 'Your OS may ask you to confirm in its default-apps settings'); defstat(); });
   on('#dlDir', async () => { await call('dl.chooseDir'); });
@@ -118,6 +130,21 @@ function bind() {
   on('#lx', async () => { const r = await call('ext.load'); if (r && r.error) toast(r.error); else if (r && r.ok) toast('Loaded ' + r.ok); });
   document.querySelectorAll('[data-delx]').forEach(b => b.onclick = () => call('ext.remove', b.dataset.delx));
   on('#bmi', async () => { const n = await call('bm.import'); if (n) toast('Imported ' + n + ' bookmarks'); }); on('#bme', () => call('bm.export')); on('#od', () => call('app.openDataDir'));
+  document.querySelectorAll('[data-tg^="x:"]').forEach(t => t.onclick = () => call('ext.enable', t.dataset.tg.slice(2), !t.classList.contains('on')));
+  document.querySelectorAll('[data-tg^="sync:"]').forEach(t => t.onclick = () => set('syncWhat', Object.assign({}, S.syncWhat, { [t.dataset.tg.slice(5)]: !S.syncWhat[t.dataset.tg.slice(5)] })));
+  document.querySelectorAll('[data-tg="vpn:on"]').forEach(t => t.onclick = async () => { const r = await call('vpn.toggle', !S.vpnOn); if (r && r.error) toast(r.error); });
+  document.querySelectorAll('[data-xopt]').forEach(b => b.onclick = () => call('ext.options', b.dataset.xopt));
+  on('#xi', async () => { const v = $('#xs').value.trim(); if (!v) return; toast('Installing…'); const r = await call('ext.install', v); toast(r.error || ('Installed ' + r.ok + (r.mv3 ? ' (MV3: some APIs unavailable)' : ''))); });
+  on('#thImp', async () => { const r = await call('theme.import'); if (r) toast(r.error || 'Imported ' + r.ok); });
+  on('#thNew', () => { location.href = 'kitsune://studio/'; }); on('#bgOpen', () => { location.href = 'kitsune://backgrounds/'; });
+  const sp = document.querySelector('[data-sel="sfxpack"]'); if (sp) { sp.onchange = () => { set('sfx', Object.assign({}, S.sfx, { pack: sp.value })); setTimeout(() => SFX.play('tabOpen', true), 150); }; $('#sfxvol').onchange = e => set('sfx', Object.assign({}, S.sfx, { volume: e.target.value / 100 })); }
+  document.querySelectorAll('[data-vuse]').forEach(b => b.onclick = () => set('vpnActive', b.dataset.vuse));
+  document.querySelectorAll('[data-vdel]').forEach(b => b.onclick = () => call('vpn.remove', b.dataset.vdel));
+  document.querySelectorAll('[data-vchk]').forEach(b => b.onclick = async () => { const e = $('#vc-' + b.dataset.vchk); e.textContent = ' · testing…'; const r = await call('vpn.check', b.dataset.vchk); e.textContent = r.ok ? ` · works: ${r.vpn} (${r.ms} ms) instead of ${r.direct || '?'}` : ' · ' + (r.error || 'IP did not change'); });
+  on('#vadd', async () => { const r = await call('vpn.save', { name: $('#vn').value, scheme: $('#vs').value, host: $('#vh').value, port: $('#vp').value, user: $('#vu').value, password: $('#vw').value }); if (r.error) toast(r.error); else if (!S.vpnActive) set('vpnActive', r.ok); });
+  if (tab === 'privacy') call('blocker.info').then(i => { const e = $('#blkst'); if (e) e.textContent = i.ready ? `Active · ${i.filters || ''} filters${i.updated ? ' · updated ' + new Date(i.updated).toLocaleDateString() : ''}` : (S.blocker === 'off' ? 'Off' : 'Loading lists… (using built-in host list meanwhile)'); }).catch(() => {});
+  if (tab === 'data') importUI();
+  if (tab === 'account') acctUI();
   if (tab === 'general') defstat();
   if (tab === 'data' || tab === 'about' || tab === 'performance') call('app.info').then(i => {
     const ud = $('#ud'); if (ud) ud.textContent = i.userData;
@@ -125,10 +152,34 @@ function bind() {
     const pf = $('#perf'); if (pf) pf.innerHTML = [['Open tabs', i.stats.tabs], ['Sleeping tabs', i.stats.sleeping], ['Windows', i.stats.windows], ['Tracker hosts blocked', i.blocklist]].map(x => `<div class="row"><div class="grow t">${x[0]}</div><div class="d">${x[1]}</div></div>`).join('');
   });
 }
+
+async function importUI() {
+  const box = $('#imp'); if (!box) return; const d = await call('import.detect');
+  if (!d.length) { box.innerHTML = '<div class="row"><span class="d">No other browsers found on this computer.</span></div>'; return; }
+  box.innerHTML = `<div class="row" style="flex-wrap:wrap"><select id="ib">${d.map((b, i) => `<option value="${i}">${K.esc(b.name)}${b.profiles.length > 1 ? '' : ''}</option>`).join('')}</select><select id="ip"></select>
+  <label class="chip"><input type="checkbox" id="ibm" checked> Bookmarks</label><label class="chip"><input type="checkbox" id="ih" checked> History</label><label class="chip"><input type="checkbox" id="ic" checked> Cookies (stay signed in)</label><button class="btn primary" id="igo">Import</button></div>
+  <div class="row"><div class="d" id="ires">Passwords are never imported. Close the other browser first so its files aren\u2019t locked. Chrome 127+ on Windows protects some cookies with app-bound encryption, so those can\u2019t be moved; sign in again on those sites.</div></div>`;
+  const fill = () => { $('#ip').innerHTML = d[$('#ib').value].profiles.map(p => `<option value="${K.esc(p.id)}">${K.esc(p.name)}</option>`).join(''); };
+  $('#ib').onchange = fill; fill();
+  $('#igo').onclick = async () => { $('#ires').textContent = 'Importing…'; try { const r = await call('import.run', { browser: d[$('#ib').value].id, profile: $('#ip').value, bookmarks: $('#ibm').checked, history: $('#ih').checked, cookies: $('#ic').checked }); $('#ires').textContent = `Imported ${r.bookmarks || 0} bookmarks, ${r.history || 0} history items, ${r.cookies || 0} cookies.` + (r.cookiesSkipped ? ` ${r.cookiesSkipped} cookies couldn\u2019t be decrypted (sign in again on those sites).` : ''); } catch (e) { $('#ires').textContent = 'Import failed: ' + e.message; } };
+}
+async function acctUI() {
+  const box = $('#acct'); if (!box) return; const a = await call('acct.status');
+  if (a.signedIn) { box.innerHTML = `<div class="row"><div class="grow"><div class="t">Signed in as ${K.esc(a.email)}</div><div class="d" id="as">${a.syncing ? 'Syncing…' : a.error ? K.esc(a.error) : a.last ? 'Last synced ' + new Date(a.last).toLocaleString() : 'Not synced yet'}</div></div><button class="btn primary" id="asy">Sync now</button><button class="btn" id="aso">Sign out</button></div>`;
+    $('#asy').onclick = async () => { $('#as').textContent = 'Syncing…'; await call('acct.sync'); acctUI(); }; $('#aso').onclick = async () => { await call('acct.signOut'); acctUI(); }; }
+  else { box.innerHTML = `<div class="row" style="flex-wrap:wrap"><input type="text" id="ae" placeholder="Email" style="width:220px"><input type="password" id="apw" placeholder="Password (8+ characters)" style="width:200px"><button class="btn primary" id="ali">Sign in</button><button class="btn" id="arg">Create account</button></div><div class="row"><div class="d" id="am">Sync bookmarks, settings and more across your computers. There is no password reset, so keep your password safe.</div></div>`;
+    const go = async m => { $('#am').textContent = 'Working…'; try { await call('acct.auth', m, $('#ae').value, $('#apw').value); acctUI(); } catch (e) { $('#am').textContent = String(e.message || e).replace(/^Error invoking remote method '[^']*': (Error: )?/, ''); } };
+    $('#ali').onclick = () => go('login'); $('#arg').onclick = () => go('register'); }
+}
 async function defstat() { const i = await call('app.info'); const e = $('#defst'); if (e) e.textContent = i.isDefault ? 'Kitsune is your default browser.' : 'Not the default yet.'; }
 
 (async () => {
   st = await K.init(); S = st.settings; F = st.features; render();
-  document.addEventListener('k:settings', e => { S = e.detail; const sy = scrollY; render(); scrollTo(0, sy); });
+  // Never rebuild the page while someone is using a control (it would close open dropdowns and eat typing).
+  const busy = () => { const a = document.activeElement; return !!(a && a !== document.body && /^(SELECT|INPUT|TEXTAREA)$/.test(a.tagName) && a.closest('#main')); };
+  let later = 0, pendA = false, pendS = false;
+  const flush = () => { clearTimeout(later); if (busy()) { later = setTimeout(flush, 700); return; } if (pendS) { pendS = false; const sy = scrollY; render(); scrollTo(0, sy); } if (pendA) { pendA = false; if (tab === 'account') acctUI(); } };
+  document.addEventListener('k:account', () => { pendA = true; flush(); });
+  document.addEventListener('k:settings', e => { S = e.detail; pendS = true; flush(); });
 })();
 </script></body></html>

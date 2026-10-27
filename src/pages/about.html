@@ -4,7 +4,7 @@
 <style>.big { text-align: center; padding: 30px 0 10px; } .big svg { width: 120px; height: 120px; animation: bob 3.4s ease-in-out infinite; } @keyframes bob { 50% { transform: translateY(-10px) rotate(-3deg); } } .big h1 { justify-content: center; font-size: 38px; } kv { display: contents; }</style></head>
 <body><div class="wrap"><div class="big"><div id="logo"></div><h1>Kitsune <span class="pill" id="ed"></span></h1><p class="lead" id="v"></p></div>
 <div class="card" id="rows"></div></div>
-<script src="kitsune://assets/icons.js"></script><script src="kitsune://assets/common.js"></script>
+<script src="kitsune://assets/icons.js"></script><script src="kitsune://assets/sfx.js"></script><script src="kitsune://assets/common.js"></script>
 <script>
 (async () => { await K.init(); const i = await kitsune.call('app.info'); document.getElementById('logo').innerHTML = I.fox.replace('width="28" height="28"', 'width="120" height="120"');
 document.getElementById('ed').textContent = i.edition === 'lite' ? 'Lite' : 'Full'; document.getElementById('v').textContent = 'Version ' + i.version + ' · light, animated, anime-themed';

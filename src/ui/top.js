@@ -19,11 +19,13 @@ let omniSeq = 0, sugg = [], selIdx = -1, omniTimer = 0, typing = false;
   if (snap) renderAll();
   renderBar();
 
-  kitsune.on('tabs', s => { snap = s; renderAll(); });
+  let lastTabs = null; kitsune.on('tabs', s => { const n = s.tabs.length; if (lastTabs !== null && window.SFX) { if (n > lastTabs) SFX.play(s.tabs.find(t => t.id === s.activeId && /^kitsune:\/\/newtab/.test(t.url || '')) ? 'newTab' : 'tabOpen'); else if (n < lastTabs) SFX.play('tabClose'); } lastTabs = n; snap = s; renderAll(); });
   kitsune.on('settings', s => { S = s; document.body.classList.toggle('bar-on', !!S.showBookmarksBar); buildPetals(); renderBar(); if (!$('#menu').hidden) buildMenu(); });
   kitsune.on('bookmarks', async () => { bookmarks = await call('bm.list'); renderBar(); });
-  kitsune.on('downloads', d => { downloads = d; if (!$('#dlp').hidden) buildDl(); });
-  kitsune.on('toast', (t, k) => toast(t, k));
+  kitsune.on('downloads', d => { if (window.SFX && downloads.length && d.filter(x => x.state === 'completed').length > downloads.filter(x => x.state === 'completed').length) SFX.play('success'); downloads = d; if (!$('#dlp').hidden) buildDl(); });
+  kitsune.on('update', u => { const b = $('#b-update'); const show = u.status === 'available' || u.status === 'ready' || u.status === 'downloading'; b.hidden = !show; b.title = u.status === 'available' ? 'Kitsune ' + u.latest + ' is available' : 'Update ' + u.status; });
+  call('update.state').then(u => { const b = $('#b-update'); if (u && (u.status === 'available' || u.status === 'ready')) b.hidden = false; }).catch(() => {});
+  kitsune.on('toast', (t, k) => { toast(t, k); if (window.SFX && k === 'error') SFX.play('error'); });
   kitsune.on('find-result', r => { $('#find-count').textContent = r.total ? `${r.active}/${r.total}` : ($('#find-in').value ? 'No matches' : ''); });
   kitsune.on('cmd', c => {
     if (c === 'focusOmnibox') focusOmni('');
@@ -43,7 +45,7 @@ function paintIcons() {
   $('#site').innerHTML = I.fox; $('#star').innerHTML = I.star;
   const prepend = (id, html) => $(id).insertAdjacentHTML('afterbegin', html);
   prepend('#b-ai', I.spark); prepend('#b-split', I.split); prepend('#b-reader', I.reader); prepend('#b-pip', I.pip); prepend('#b-shot', I.shot);
-  prepend('#b-shield', I.shield); prepend('#b-dl', I.download); prepend('#b-menu', I.menu);
+  prepend('#b-update', I.update); prepend('#b-shield', I.shield); prepend('#b-dl', I.download); prepend('#b-menu', I.menu);
   $('.fi').innerHTML = I.find; $('#find-prev').innerHTML = I.up; $('#find-next').innerHTML = I.down; $('#find-close').innerHTML = I.close;
   $('#site svg').style.cssText = 'width:16px;height:16px';
   if (!F.split) $('#b-split').style.display = 'none';
@@ -296,7 +298,7 @@ function bindStatic() {
   $('#back').onclick = () => call('cmd', 'back'); $('#fwd').onclick = () => call('cmd', 'forward');
   $('#reload').onclick = e => call('cmd', snap && snap.tabs.find(t => t.id === snap.activeId && t.loading) ? 'stop' : (e.shiftKey ? 'hardReload' : 'reload'));
   $('#star').onclick = () => call('cmd', 'bookmark');
-  $('#b-ai').onclick = () => call('cmd', 'assistant'); $('#b-split').onclick = () => call('cmd', 'split'); $('#b-reader').onclick = () => call('cmd', 'reader');
+  $('#b-update').onclick = () => call('cmd', 'openPage', 'updates'); $('#b-ai').onclick = () => call('cmd', 'assistant'); $('#b-split').onclick = () => call('cmd', 'split'); $('#b-reader').onclick = () => call('cmd', 'reader');
   $('#b-pip').onclick = () => call('cmd', 'pip'); $('#b-shot').onclick = () => call('cmd', 'screenshot');
   $('#b-menu').onclick = () => { if (!$('#menu').hidden) return closePopups(); buildMenu(); showPanel($('#menu')); };
   $('#b-shield').onclick = () => { if (!$('#shieldp').hidden) return closePopups(); buildShield(); showPanel($('#shieldp')); };
@@ -322,7 +324,7 @@ function buildMenu() {
     `<div class="zoomrow"><span>Zoom</span><button class="ib sm" data-c="zoomOut">−</button><b id="zoomv">${snap ? snap.zoom : 100}%</b><button class="ib sm" data-c="zoomIn">+</button><button class="ib sm" data-c="zoomReset" title="Reset">↺</button></div><div class="sep"></div>` +
     item('find', I.find, 'Find in page', M + 'F') + (F.assistant ? item('assistant', I.spark, 'AI assistant', M + 'Shift+A') : '') + item('reader', I.reader, 'Reader view', 'F9') + (F.split ? item('split', I.split, 'Split view', '') : '') + item('pip', I.pip, 'Picture-in-picture', '') + item('screenshot', I.shot, 'Screenshot', M + 'Shift+S') + item('print', I.print, 'Print…', M + 'P') + item('pdf', I.download, 'Save page as PDF', '') + item('sleepOthers', I.moon, 'Sleep other tabs', '') + '<div class="sep"></div>' +
     `<div class="themes">${themes.map(t => `<span class="sw${S.theme === t ? ' cur' : ''}" data-t="${t}" title="${t}" style="background:${COL[t]}"></span>`).join('')}</div><div class="sep"></div>` +
-    item('openPage', I.gear, 'Settings', M + ',', 'settings') + item('devtools', I.fox, 'Developer tools', 'F12');
+    item('openPage', I.palette, 'Backgrounds & themes', '', 'backgrounds') + item('openPage', I.key, 'Passwords', '', 'passwords') + item('openPage', I.users, 'Community', '', 'community') + item('openPage', I.update, 'Update Kitsune', '', 'updates') + item('openPage', I.gear, 'Settings', M + ',', 'settings') + item('devtools', I.fox, 'Developer tools', 'F12');
   m.querySelectorAll('.mi, .zoomrow .ib').forEach(b => b.addEventListener('click', () => { const c = b.dataset.c; call('cmd', c, b.dataset.a); if (!/^zoom/.test(c)) closePopups(); }));
   m.querySelectorAll('.sw').forEach(s => s.addEventListener('click', () => { call('settings.set', { theme: s.dataset.t }); }));
 }

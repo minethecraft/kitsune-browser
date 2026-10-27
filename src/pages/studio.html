@@ -1,0 +1,122 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Theme Studio</title>
+<link rel="stylesheet" href="kitsune://assets/themes.css"><link rel="stylesheet" href="kitsune://assets/page.css">
+<style>
+.wrap { max-width: 1180px; } .cols { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 24px; align-items: start; } @media (max-width: 960px) { .cols { grid-template-columns: 1fr; } }
+.side { position: sticky; top: 24px; } 
+.sw { display: flex; align-items: center; gap: 10px; padding: 8px 14px; } .sw label { flex: 1; font-weight: 600; font-size: 13.5px; } .sw input[type=color] { width: 44px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: none; cursor: pointer; }
+.presets { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 14px 14px; } .pr { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--line); cursor: pointer; transition: transform .15s; } .pr:hover { transform: scale(1.15); }
+input[type=range] { accent-color: var(--accent); flex: 1; }
+.btn { border: 1px solid var(--line); background: var(--bg2); color: var(--fg); padding: 9px 18px; border-radius: 999px; cursor: pointer; font: inherit; font-weight: 600; } .btn:hover { transform: translateY(-1px); } .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: transparent; box-shadow: 0 6px 18px var(--glow); } .btn.sm { padding: 5px 12px; font-size: 12.5px; }
+.seg { display: inline-flex; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 3px; } .seg button { border: 0; background: transparent; color: var(--fg); padding: 6px 13px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 13px; } .seg button.cur { background: var(--accent); color: var(--accent-fg); font-weight: 700; }
+.mock { border-radius: calc(var(--radius, 12px) * 1.5); overflow: hidden; border: 1px solid var(--line); background: var(--bg); position: relative; height: 330px; }
+.mock .tabs { display: flex; gap: 3px; padding: 8px 8px 0; background: var(--bg2); } .mock .t { padding: 7px 14px; font-size: 12px; color: var(--muted); background: transparent; border-radius: calc(var(--radius, 12px) * .8) calc(var(--radius, 12px) * .8) 0 0; } .mock .t.on { background: var(--bg); color: var(--fg); }
+html[data-tabs="square"] .mock .t { border-radius: 0; } html[data-tabs="pill"] .mock .t { border-radius: 999px; margin-bottom: 4px; }
+.mock .omni { margin: 8px; padding: 8px 14px; font-size: 12px; color: var(--muted); background: var(--bg3); border-radius: calc(var(--radius, 12px) * 1.6); }
+.mock .stage { position: absolute; inset: 78px 0 0 0; background: radial-gradient(400px 220px at 70% 0%, var(--glow), transparent 70%), var(--bg); display: grid; place-items: center; text-align: center; overflow: hidden; }
+.mock .stage .bgm { position: absolute; inset: 0; background-size: cover; background-position: center; } .mock .stage .bgm video { width: 100%; height: 100%; object-fit: cover; } .mock .stage .dim { position: absolute; inset: 0; background: #000; }
+.mock .clock { position: relative; font-size: 44px; font-weight: 300; color: #fff; text-shadow: 0 2px 16px rgba(0,0,0,.5); } .mock .sbox { position: relative; margin-top: 10px; padding: 9px 22px; width: 220px; border-radius: calc(var(--radius, 12px) * 2); background: color-mix(in srgb, var(--bg2) 75%, transparent); backdrop-filter: blur(var(--blur, 10px)); font-size: 12px; color: var(--muted); } .mock .chip2 { display: inline-block; margin-top: 12px; padding: 5px 14px; border-radius: 999px; background: var(--accent); color: var(--accent-fg); font-size: 12px; font-weight: 700; position: relative; }
+.ev { display: flex; align-items: center; gap: 8px; padding: 6px 14px; } .ev .n { flex: 1; font-size: 13.5px; } .ev .f { color: var(--muted); font-size: 12px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rowc { display: flex; align-items: center; gap: 12px; padding: 9px 14px; } .rowc > b { width: 110px; font-size: 13.5px; } .val { width: 34px; text-align: right; color: var(--muted); font-size: 12px; }
+</style></head>
+<body><div class="wrap"><h1><span id="logo"></span> Theme Studio</h1><p class="lead">Colours, backgrounds, interface shape and interaction sounds. Changes preview live on this page.</p>
+<div class="cols"><div>
+<div class="card"><div class="rowc"><b>Name</b><input type="text" id="name" style="flex:1" maxlength="40"></div><div class="rowc"><b>Edit</b><select id="which" style="flex:1"></select></div></div>
+
+<h2>Colours</h2><div class="card"><div class="presets" id="presets"></div><div id="cols"></div></div>
+
+<h2>Background</h2><div class="card"><div class="rowc"><b>Type</b><div class="seg" id="bgt"></div></div><div id="bgopts"></div></div>
+
+<h2>Interface</h2><div class="card">
+<div class="rowc"><b>Roundness</b><input type="range" id="radius" min="0" max="28"><span class="val" id="vr"></span></div>
+<div class="rowc"><b>Glass blur</b><input type="range" id="blur" min="0" max="30"><span class="val" id="vb"></span></div>
+<div class="rowc"><b>Density</b><div class="seg" id="density"></div></div>
+<div class="rowc"><b>Font</b><div class="seg" id="font"></div></div>
+<div class="rowc"><b>Tab shape</b><div class="seg" id="tabs"></div></div>
+<div class="rowc"><b>Particles</b><select id="particles" style="flex:1"></select></div></div>
+
+<h2>Sounds</h2><div class="card">
+<div class="rowc"><b>Sound pack</b><select id="pack" style="flex:1"></select><button class="btn sm" id="test">▶ Test</button></div>
+<div class="rowc"><b>Volume</b><input type="range" id="vol" min="0" max="100"><span class="val" id="vv"></span></div>
+<div class="rowc"><b>Hover sounds</b><div class="tg" id="hover"></div></div>
+<div class="rowc"><span class="d" style="font-size:12.5px;color:var(--muted)">Replace any sound with your own file (WAV, MP3, OGG up to 1.5 MB). Custom sounds stay on this computer and aren’t shared.</span></div><div id="evs"></div></div>
+
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin:22px 0"><button class="btn primary" id="save">Save &amp; apply</button><button class="btn" id="export">Export file</button><button class="btn" id="publish">Share to community</button><button class="btn" id="del" style="color:var(--err)">Delete</button></div>
+</div>
+<div class="side"><h2 style="margin-top:0">Preview</h2><div class="mock"><div class="tabs"><span class="t on">New Tab</span><span class="t">Anime Hub</span><span class="t">Settings</span></div><div class="omni">Search or enter address</div><div class="stage"><div class="bgm" id="pbg"></div><div class="dim" id="pdim"></div><div><div class="clock">9:41</div><div class="sbox">Search the web…</div><div class="chip2">Accent</div></div></div></div>
+<p class="d" style="color:var(--muted);font-size:12.5px;margin-top:10px">Tip: the whole page you’re looking at is wearing this theme too.</p></div></div></div><div id="toast"></div>
+<script src="kitsune://assets/icons.js"></script><script src="kitsune://assets/sfx.js"></script><script src="kitsune://assets/common.js"></script>
+<script>
+const $ = s => document.querySelector(s), call = (n, ...a) => kitsune.call(n, ...a);
+const toast = t => { const e = $('#toast'); e.textContent = t; e.className = 'on'; clearTimeout(toast.t); toast.t = setTimeout(() => e.className = '', 2600); };
+const BASE = { sakura: ['#2b1830', '#ff8fb8', '#ffc86b'], neon: ['#0e1027', '#3df0ff', '#ff3df0'], umbra: ['#0b0912', '#a77bff', '#5b8cff'], aqua: ['#0c2233', '#4fd1ff', '#7af5c8'], crimson: ['#1d0b10', '#ff4d5e', '#ffb84d'], dusk: ['#1d1630', '#ff9d4d', '#ff6fa5'], hanami: ['#ffeff5', '#ff6fa5', '#ffa94d'], rain: ['#0b1418', '#6cf5c2', '#57b9ff'] };
+const mixh = (a, b, t) => { const x = parseInt(a.slice(1), 16), y = parseInt(b.slice(1), 16); const c = s => Math.round(((x >> s) & 255) * (1 - t) + ((y >> s) & 255) * t); return '#' + [16, 8, 0].map(s => c(s).toString(16).padStart(2, '0')).join(''); };
+const dark = h => { const n = parseInt(h.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255 < .5; };
+function fromPreset(bg, ac, ac2) { const d = dark(bg); const fg = d ? '#f6eefc' : '#2a1633'; return { bg, bg2: mixh(bg, d ? '#ffffff' : '#000000', .07), bg3: mixh(bg, d ? '#ffffff' : '#000000', .14), fg, muted: mixh(fg, bg, .4), accent: ac, accent2: ac2 }; }
+const blank = () => Object.assign({ name: 'My theme', particles: 'sakura', ui: { radius: 12, blur: 10, density: 'normal', font: 'system', tabs: 'round' }, sfx: { pack: 'off', volume: .5, hover: false } }, fromPreset(...BASE.sakura));
+let S, T = blank(), S0;
+const COLS = [['bg', 'Background'], ['bg2', 'Panels'], ['bg3', 'Raised'], ['fg', 'Text'], ['muted', 'Muted text'], ['accent', 'Accent'], ['accent2', 'Accent 2']];
+const segHtml = (id, opts, cur) => { $('#' + id).innerHTML = opts.map(([v, l]) => `<button data-v="${v}" class="${v === cur ? 'cur' : ''}">${l}</button>`).join(''); };
+function preview() {
+  K.preview = Object.assign({}, T, { id: T.id || 'draft' }); document.dispatchEvent(new Event('k:preview')); applyNow();
+  const bg = T.bg2 && T.bgx; const m = T.bgSel; const box = $('#pbg'); box.innerHTML = ''; box.style.backgroundImage = 'none';
+  if (T.bg_ && T.bg_.url) { if (T.bg_.type === 'video') { const v = document.createElement('video'); v.src = T.bg_.url; v.muted = true; v.loop = true; v.autoplay = true; box.appendChild(v); } else box.style.backgroundImage = `url("${T.bg_.url}")`; }
+  $('#pdim').style.opacity = T.bg_ ? (T.bg_.dim == null ? 20 : T.bg_.dim) / 100 : 0;
+}
+function applyNow() { if (window.K && K.reapply) K.reapply(); }
+function draw() {
+  $('#name').value = T.name; const u = T.ui;
+  $('#presets').innerHTML = Object.entries(BASE).map(([k, v]) => `<div class="pr" data-p="${k}" title="${k}" style="background:linear-gradient(135deg,${v[0]} 50%,${v[1]} 50%)"></div>`).join('');
+  $('#cols').innerHTML = COLS.map(([k, l]) => `<div class="sw"><label>${l}</label><input type="color" data-c="${k}" value="${T[k]}"></div>`).join('');
+  segHtml('bgt', [['none', 'None'], ['image', 'Image'], ['video', 'Video']], T.bg_ ? T.bg_.type : 'none');
+  bgOpts();
+  $('#radius').value = u.radius; $('#vr').textContent = u.radius; $('#blur').value = u.blur; $('#vb').textContent = u.blur;
+  segHtml('density', [['compact', 'Compact'], ['normal', 'Normal'], ['roomy', 'Roomy']], u.density); segHtml('font', [['system', 'System'], ['rounded', 'Rounded'], ['serif', 'Serif'], ['mono', 'Mono']], u.font); segHtml('tabs', [['round', 'Rounded'], ['square', 'Square'], ['pill', 'Pill']], u.tabs);
+  $('#particles').innerHTML = [['sakura', 'Sakura petals'], ['ember', 'Embers'], ['snow', 'Snow'], ['rain', 'Neon rain'], ['firefly', 'Fireflies'], ['none', 'None']].map(([v, l]) => `<option value="${v}" ${T.particles === v ? 'selected' : ''}>${l}</option>`).join('');
+  $('#pack').innerHTML = SFX.PACKS.map(([v, l]) => `<option value="${v}" ${T.sfx.pack === v ? 'selected' : ''}>${l}</option>`).join('');
+  $('#vol').value = Math.round(T.sfx.volume * 100); $('#vv').textContent = Math.round(T.sfx.volume * 100); $('#hover').classList.toggle('on', !!T.sfx.hover);
+  const cu = (S.sfx && S.sfx.custom) || {};
+  $('#evs').innerHTML = SFX.EVENTS.map(([k, l]) => `<div class="ev"><span class="n">${l}</span><span class="f">${cu[k] ? 'custom file' : 'pack sound'}</span><button class="btn sm" data-ep="${k}">▶</button><button class="btn sm" data-ef="${k}">Choose…</button>${cu[k] ? `<button class="btn sm" data-ec="${k}">Clear</button>` : ''}</div>`).join('');
+  $('#which').innerHTML = '<option value="">New theme</option>' + (S.customThemes || []).map(t => `<option value="${t.id}" ${T.id === t.id ? 'selected' : ''}>${K.esc(t.name)}</option>`).join('');
+  preview();
+}
+let mine = [];
+async function bgOpts() {
+  const b = T.bg_, el = $('#bgopts'); if (!b) { el.innerHTML = ''; return; }
+  mine = (await call('bg.mine')).filter(x => x.type === b.type);
+  el.innerHTML = `<div class="rowc"><b>From my files</b><select id="bgsel" style="flex:1"><option value="">Choose…</option>${mine.map(x => `<option value="${K.esc(x.url)}" ${b.url === x.url ? 'selected' : ''}>${K.esc(x.name)}</option>`).join('')}</select><button class="btn sm" id="bgadd">Add files…</button></div>
+  <div class="rowc"><b>Or a link</b><input type="text" id="bgurl" style="flex:1" placeholder="https://…" value="${/^https:/.test(b.url || '') ? K.esc(b.url) : ''}"></div>
+  <div class="rowc"><b>Darken</b><input type="range" id="dim" min="0" max="80" value="${b.dim == null ? 20 : b.dim}"><span class="val" id="vd">${b.dim == null ? 20 : b.dim}</span></div>`;
+  $('#bgsel').onchange = e => { b.url = e.target.value; preview(); }; $('#bgurl').onchange = e => { if (/^https:\/\//.test(e.target.value)) { b.url = e.target.value.trim(); preview(); } };
+  $('#bgadd').onclick = async () => { await call('bg.add'); bgOpts(); };
+  $('#dim').oninput = e => { b.dim = +e.target.value; $('#vd').textContent = e.target.value; preview(); };
+}
+function sync() { // draft -> theme object accepted by main
+  const t = Object.assign({}, T); delete t.bg_; if (T.bg_ && T.bg_.url) t.wall = { type: T.bg_.type, url: T.bg_.url, dim: T.bg_.dim == null ? 20 : T.bg_.dim }; else delete t.wall; return t;
+}
+document.addEventListener('input', e => {
+  const t = e.target; if (t.dataset.c) { T[t.dataset.c] = t.value; if (t.dataset.c === 'bg') {} preview(); }
+  else if (t.id === 'radius') { T.ui.radius = +t.value; $('#vr').textContent = t.value; preview(); } else if (t.id === 'blur') { T.ui.blur = +t.value; $('#vb').textContent = t.value; preview(); }
+  else if (t.id === 'vol') { T.sfx.volume = t.value / 100; $('#vv').textContent = t.value; SFX.config(Object.assign({}, S.sfx, T.sfx)); } else if (t.id === 'name') T.name = t.value;
+});
+document.addEventListener('change', e => { const t = e.target; if (t.id === 'particles') { T.particles = t.value; preview(); } else if (t.id === 'pack') { T.sfx.pack = t.value; SFX.config(Object.assign({}, S.sfx, T.sfx)); SFX.play('tabOpen', true); } else if (t.id === 'which') { const f = (S.customThemes || []).find(x => x.id === t.value); T = f ? load(f) : blank(); draw(); } });
+function load(f) { const t = JSON.parse(JSON.stringify(f)); t.ui = Object.assign({ radius: 12, blur: 10, density: 'normal', font: 'system', tabs: 'round' }, t.ui); t.sfx = Object.assign({ pack: 'off', volume: .5, hover: false }, t.sfx); t.particles = t.particles || 'sakura'; if (t.wall) { t.bg_ = Object.assign({}, t.wall); delete t.wall; } return t; }
+document.addEventListener('click', async e => {
+  const t = e.target; const seg = t.closest('.seg'); 
+  if (seg && t.dataset.v !== undefined) { const id = seg.id, v = t.dataset.v; if (id === 'bgt') { T.bg_ = v === 'none' ? null : { type: v, url: '', dim: 20 }; } else T.ui[id] = v; draw(); return; }
+  if (t.dataset.p) { Object.assign(T, fromPreset(...BASE[t.dataset.p])); draw(); return; }
+  if (t.id === 'hover') { T.sfx.hover = !T.sfx.hover; SFX.config(Object.assign({}, S.sfx, T.sfx)); t.classList.toggle('on', T.sfx.hover); return; }
+  if (t.id === 'test') { SFX.config(Object.assign({}, S.sfx, T.sfx)); ['click', 'tabOpen', 'success'].forEach((k, i) => setTimeout(() => SFX.play(k, true), i * 380)); return; }
+  if (t.dataset.ep) { SFX.config(Object.assign({}, S.sfx, T.sfx)); SFX.play(t.dataset.ep, true); return; }
+  if (t.dataset.ef) { const r = await call('sfx.pick', t.dataset.ef); if (r && r.error) toast(r.error); return; }
+  if (t.dataset.ec) { await call('sfx.clear', t.dataset.ec); return; }
+  if (t.id === 'save') { const r = await call('theme.save', sync()); T.id = r.id; await call('settings.set', { theme: 'custom:' + r.id }); toast('Saved and applied'); }
+  if (t.id === 'export') { if (!T.id) { const r = await call('theme.save', sync()); T.id = r.id; } const r = await call('theme.export', T.id); if (r && r.ok) toast('Exported'); }
+  if (t.id === 'publish') { if (!T.id) { const r = await call('theme.save', sync()); T.id = r.id; } location.href = 'kitsune://community/#publishTheme:' + T.id; }
+  if (t.id === 'del') { if (T.id && confirm('Delete this theme?')) { await call('theme.remove', T.id); T = blank(); draw(); } }
+});
+(async () => { const st = await K.init(); S = st.settings; $('#logo').innerHTML = I.palette; SFX.bind(document);
+  const cur = String(S.theme).startsWith('custom:') ? (S.customThemes || []).find(t => 'custom:' + t.id === S.theme) : null; const h = location.hash.match(/edit:(\w+)/); const f = h ? (S.customThemes || []).find(t => t.id === h[1]) : cur; T = f ? load(f) : blank(); draw();
+  document.addEventListener('k:settings', e => { S = e.detail; if (!document.activeElement || document.activeElement.tagName !== 'INPUT') { /* keep draft */ } });
+})();
+</script></body></html>

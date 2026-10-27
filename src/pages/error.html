@@ -16,7 +16,7 @@ h1 { justify-content: center; font-size: 28px; } code { background: var(--bg2); 
   <ul><li>Check your connection or try again in a moment</li><li>Make sure the address is spelled right</li><li>If it's a local server, check that it's running</li></ul>
   <div class="btns"><button class="btn primary" id="retry">Try again</button><button class="btn" id="home">New tab</button></div>
 </div></div>
-<script src="kitsune://assets/icons.js"></script><script src="kitsune://assets/common.js"></script>
+<script src="kitsune://assets/icons.js"></script><script src="kitsune://assets/sfx.js"></script><script src="kitsune://assets/common.js"></script>
 <script>
 const p = new URLSearchParams(location.search); const u = p.get('u') || '';
 document.getElementById('fox').innerHTML = I.fox; document.getElementById('d').textContent = (p.get('d') || 'ERR_UNKNOWN').replace(/^net::/, ''); document.getElementById('u').textContent = u;
