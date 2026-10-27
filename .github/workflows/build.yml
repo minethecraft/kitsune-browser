@@ -3,7 +3,7 @@ name: Build Kitsune
 on:
   workflow_dispatch:
   push:
-    tags: ['mac-*']
+    paths: ['MAC_BUILD']
 
 permissions:
   contents: write
@@ -45,8 +45,9 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/mac-')
+    if: github.event_name == 'push'
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           path: dmgs
@@ -54,4 +55,6 @@ jobs:
       - name: Publish dmgs to a release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" dmgs/*.dmg --repo "${{ github.repository }}" --title "Mac builds ${{ github.ref_name }}" --notes "Unsigned Apple-silicon builds."
+        run: |
+          V=$(node -p "require('./package.json').version")
+          gh release create "mac-v$V-run${{ github.run_number }}" dmgs/*.dmg --repo "${{ github.repository }}" --target "${{ github.sha }}" --title "Mac builds v$V" --notes "Unsigned Apple-silicon builds."
