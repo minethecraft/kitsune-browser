@@ -1,0 +1,134 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Settings</title>
+<link rel="stylesheet" href="kitsune://assets/themes.css"><link rel="stylesheet" href="kitsune://assets/page.css">
+<style>
+.layout { display: grid; grid-template-columns: 210px 1fr; gap: 30px; max-width: 1080px; margin: 0 auto; padding: 34px 28px 90px; }
+nav { position: sticky; top: 28px; align-self: start; display: flex; flex-direction: column; gap: 4px; }
+nav h1 { font-size: 22px; margin-bottom: 14px; }
+nav a { padding: 9px 14px; border-radius: 12px; color: var(--muted); cursor: pointer; transition: background .15s, color .15s, transform .15s; text-decoration: none !important; }
+nav a:hover { background: var(--bg2); color: var(--fg); transform: translateX(3px); } nav a.cur { background: var(--bg2); color: var(--accent); font-weight: 700; box-shadow: inset 3px 0 0 var(--accent); }
+section { display: none; animation: rise .4s cubic-bezier(.2,.8,.3,1) both; } section.cur { display: block; }
+.themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; padding: 8px; }
+.th { border-radius: 14px; border: 2px solid var(--line); padding: 10px; cursor: pointer; transition: transform .2s cubic-bezier(.2,.9,.3,1.4), border-color .2s, box-shadow .2s; }
+.th:hover { transform: translateY(-4px) scale(1.03); } .th.cur { border-color: var(--accent); box-shadow: 0 0 0 3px var(--glow); }
+.th .pv { height: 54px; border-radius: 9px; margin-bottom: 8px; position: relative; overflow: hidden; } .th .pv i { position: absolute; border-radius: 99px; } .th b { font-size: 13px; }
+.pill.on { background: var(--accent); color: var(--accent-fg); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 14px 14px; } .chip { display: inline-flex; align-items: center; gap: 8px; padding: 5px 6px 5px 12px; border-radius: 999px; background: var(--bg3); font-size: 13px; } .chip .x { width: 22px; height: 22px; }
+.ctn { display: inline-block; width: 12px; height: 12px; border-radius: 50%; }
+#toast { position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%); background: var(--bg3); border: 1px solid var(--accent); padding: 10px 20px; border-radius: 999px; box-shadow: 0 10px 30px rgba(0,0,0,.4); display: none; z-index: 9; } #toast.on { display: block; animation: rise .3s both; }
+@media (max-width: 760px) { .layout { grid-template-columns: 1fr; } nav { position: static; flex-direction: row; flex-wrap: wrap; } }
+</style></head>
+<body>
+<div class="layout">
+  <nav id="nav"><h1><span id="logo"></span>Settings</h1></nav>
+  <main id="main"></main>
+</div>
+<div id="toast"></div>
+<script src="kitsune://assets/icons.js"></script><script src="kitsune://assets/common.js"></script>
+<script>
+const $ = s => document.querySelector(s), call = (n, ...a) => kitsune.call(n, ...a);
+let S, F, st, tab = (location.hash || '#appearance').slice(1);
+const set = (k, v) => call('settings.set', { [k]: v });
+const toast = t => { const e = $('#toast'); e.textContent = t; e.className = 'on'; clearTimeout(toast.t); toast.t = setTimeout(() => e.className = '', 2200); };
+const THEMES = { sakura: ['Sakura Dawn', '#2b1830', '#ff8fb8', '#ffc86b'], neon: ['Neon Shibuya', '#0e1027', '#3df0ff', '#ff3df0'], umbra: ['Umbra', '#0b0912', '#a77bff', '#5b8cff'], aqua: ['Aqua Gel', '#0c2233', '#4fd1ff', '#7af5c8'], crimson: ['Crimson Throne', '#1d0b10', '#ff4d5e', '#ffb84d'], dusk: ['Kitsune Dusk', '#1d1630', '#ff9d4d', '#ff6fa5'], hanami: ['Hanami Light', '#ffeff5', '#ff6fa5', '#ffa94d'], rain: ['Rainy Cyber', '#0b1418', '#6cf5c2', '#57b9ff'] };
+const row = (t, d, ctl) => `<div class="row"><div class="grow"><div class="t">${t}</div>${d ? `<div class="d">${d}</div>` : ''}</div>${ctl}</div>`;
+const tog = (k, on) => `<div class="tg ${on ? 'on' : ''}" data-tg="${k}"></div>`;
+const sel = (k, opts, cur) => `<select data-sel="${k}">${opts.map(([v, l]) => `<option value="${v}" ${v === cur ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
+const seg = (k, opts, cur) => `<div class="seg" data-seg="${k}">${opts.map(([v, l]) => `<button data-v="${v}" class="${v === cur ? 'cur' : ''}">${l}</button>`).join('')}</div>`;
+
+const SECTIONS = {
+  appearance: ['Appearance', () => `<h2>Theme</h2><div class="card"><div class="themes">${F.themes.map(t => `<div class="th ${S.theme === t ? 'cur' : ''}" data-theme="${t}"><div class="pv" style="background:${THEMES[t][1]}"><i style="left:8px;top:8px;width:46px;height:10px;background:${THEMES[t][2]}"></i><i style="left:8px;top:24px;width:70px;height:8px;background:${THEMES[t][3]};opacity:.8"></i><i style="right:8px;bottom:8px;width:18px;height:18px;background:${THEMES[t][2]};opacity:.55"></i></div><b>${THEMES[t][0]}</b></div>`).join('')}</div></div>
+    <h2>Motion</h2><div class="card">${row('Animation level', 'Reduced keeps transitions, drops looping effects. Off disables everything.', seg('animations', [['full', 'Full'], ['reduced', 'Reduced'], ['off', 'Off']], S.animations))}
+    ${row('Battery saver', 'Automatically reduce animations when unplugged', tog('batterySaver', S.batterySaver))}
+    ${F.particles ? row('Particles', 'Falling petals, embers, snow, rain or fireflies on the new tab page', sel('particles', [['auto', 'Match theme'], ['sakura', 'Sakura petals'], ['ember', 'Embers'], ['snow', 'Snow'], ['rain', 'Neon rain'], ['firefly', 'Fireflies'], ['none', 'None']], S.particles)) : ''}</div>
+    <h2>Anime backgrounds</h2><div class="card">${row('Use my Kiroku library', 'New tab backgrounds come from the anime you watched or are watching', tog('bgKiroku', S.bgKiroku))}
+    ${row('Adaptive accent colour', 'Tint the browser with the colours of the current background', tog('adaptiveAccent', S.adaptiveAccent))}
+    ${row('Seconds per background', '', `<input type="number" min="8" max="600" value="${S.bgInterval}" data-num="bgInterval" style="width:90px">`)}
+    ${row('HD backgrounds', 'Fetch the sharpest artwork available (Kitsu wide covers, TMDB backdrops when a key is set)', tog('hdBackgrounds', S.hdBackgrounds))}
+    ${row('TMDB API key (optional)', 'Free key from themoviedb.org enables true 1080p+ backdrops', `<input type="password" data-txt="tmdbKey" value="${K.esc(S.tmdbKey)}" style="width:240px" placeholder="v3 API key">`)}
+    ${row('Include suggestive titles', 'Off by default so backgrounds stay safe for school and work', tog('showEcchi', S.showEcchi))}</div>
+    <h2>Layout</h2><div class="card">${row('Bookmarks toolbar', '', tog('showBookmarksBar', S.showBookmarksBar))}${F.sidebar ? row('Sidebar', 'Pinned sites, workspaces and quick pages', tog('sidebarOn', S.sidebarOn)) : ''}
+    ${row('Websites use', 'Light or dark colour scheme for pages that support it', seg('pageTheme', [['system', 'System'], ['dark', 'Dark'], ['light', 'Light']], S.pageTheme))}</div>`],
+
+  general: ['General', () => `<h2>Start</h2><div class="card">${row('Home page', 'Used by the Home command and new windows', `<input type="text" data-txt="homepage" value="${K.esc(S.homepage)}" style="width:280px">`)}
+    ${row('Restore previous session', 'Reopen your tabs when Kitsune starts', tog('restoreSession', S.restoreSession))}
+    ${row('Your name', 'Shown in the new tab greeting', `<input type="text" data-txt="displayName" value="${K.esc(S.displayName)}" style="width:200px" placeholder="optional">`)}</div>
+    <h2>Search</h2><div class="card">${row('Default search engine', 'Shortcuts: <b>yt</b> youtube · <b>gh</b> github · <b>w</b> wikipedia · <b>al</b> anilist · <b>mal</b> myanimelist · <b>r</b> reddit · <b>mr</b> modrinth', sel('searchEngine', Object.entries(st.engines).map(([k, v]) => [k, v.name]), S.searchEngine))}</div>
+    <h2>Default browser</h2><div class="card">${row('Make Kitsune your default browser', '<span id="defst"></span>', '<button class="btn primary" id="mkdef">Set as default</button>')}</div>
+    <h2>Downloads</h2><div class="card">${row('Save files to', K.esc(S.downloadDir || 'Your Downloads folder'), '<button class="btn" id="dlDir">Change…</button>')}</div>`],
+
+  privacy: ['Privacy & Security', () => `<h2>Tracking protection</h2><div class="card">${row('Blocker level', 'Standard blocks known ad & tracker hosts. Strict also matches common ad URL patterns (may break some sites).', seg('blocker', [['off', 'Off'], ['standard', 'Standard'], ['strict', 'Strict']], S.blocker))}
+    ${row('HTTPS-only mode', 'Upgrade http:// pages to https:// and fall back only if the site has no secure version', tog('httpsOnly', S.httpsOnly))}
+    ${row('Send Global Privacy Control & Do Not Track', '', tog('sendGPC', S.sendGPC))}</div>
+    <h2>Clear data</h2><div class="card"><div class="chips" style="padding-top:14px"><label class="chip"><input type="checkbox" id="c-cookies" checked> Cookies & site data</label><label class="chip"><input type="checkbox" id="c-cache" checked> Cache</label><label class="chip"><input type="checkbox" id="c-history"> History</label><label class="chip"><input type="checkbox" id="c-downloads"> Download list</label><label class="chip"><input type="checkbox" id="c-permissions"> Site permissions</label></div>
+    <div class="row"><div class="grow d">Clearing cookies signs you out of websites in every container.</div><button class="btn danger" id="clear">Clear selected</button></div></div>`],
+
+  performance: ['Performance', () => `<h2>Memory</h2><div class="card">${row('Put idle tabs to sleep', 'Sleeping tabs release their page process completely and wake instantly when clicked. 0 = never.', `<input type="number" min="0" max="240" value="${S.sleepMinutes}" data-num="sleepMinutes" style="width:90px"> <span class="d">minutes</span>`)}</div>
+    <h2>Right now</h2><div class="card" id="perf"></div>`],
+
+  anime: ['Anime & Kiroku', () => `<h2>Library</h2><div class="card">${row('Kiroku site URL', 'Adds a Kiroku button to the sidebar', `<input type="text" data-txt="kirokuUrl" value="${K.esc(S.kirokuUrl)}" placeholder="https://…" style="width:300px">`)}
+    ${row('Extra AniList IDs', 'Comma-separated; they are added to your backgrounds', `<input type="text" id="ids" value="${(S.customAnilistIds || []).join(', ')}" style="width:300px" placeholder="e.g. 21, 16498">`)}
+    <div class="row" style="display:block"><div class="t">Import library JSON</div><div class="d" style="margin:2px 0 8px">Paste an array of AniList IDs, or items like <code>{"id":16498,"t":"Attack on Titan","s":"watching","r":9}</code>. Ratings of 9–10 and "watching" titles show up most.</div><textarea id="lib" placeholder='[16498, 21, {"id":145815,"s":"watched","r":10}]'></textarea><div style="margin-top:8px;display:flex;gap:8px"><button class="btn primary" id="impLib">Import</button><button class="btn" id="resetLib">Back to bundled library</button></div></div></div>`],
+
+  containers: ['Containers & Sidebar', () => !F.containers ? '<h2>Containers</h2><div class="card"><div class="empty">Containers, workspaces and the sidebar are part of the Full edition.</div></div>' : `<h2>Containers</h2><p class="lead" style="margin-top:-4px">Each container has its own cookies and logins — like Firefox containers and Opera workspaces. Right-click a tab → Move to Container.</p>
+    <div class="card"><div class="chips">${S.containers.map(c => `<span class="chip"><span class="ctn" style="background:${c.color}"></span>${c.icon || ''} ${K.esc(c.name)}${c.id === 'default' ? '' : `<button class="x" data-delc="${c.id}">✕</button>`}</span>`).join('')}</div>
+    <div class="row"><input type="text" id="cn" placeholder="New container name" style="width:200px"><input type="color" id="cc" value="#5ab0ff" style="width:44px;height:36px;padding:2px"><button class="btn" id="addc">Add container</button></div></div>
+    <h2>Sidebar pins</h2><div class="card"><div class="chips">${S.pins.map((p, i) => `<span class="chip"><img class="favi" src="${K.favicon(p.url)}" style="width:14px;height:14px">${K.esc(p.title)}<button class="x" data-delp="${i}">✕</button></span>`).join('')}</div>
+    <div class="row"><input type="text" id="pn" placeholder="Title" style="width:140px"><input type="text" id="pu" placeholder="https://…" style="flex:1"><button class="btn" id="addp">Pin</button></div></div>`],
+
+  extensions: ['Extensions', () => `<h2>Chrome extensions</h2><div class="card">${F.extensions ? `<div class="chips">${S.extensions.map(x => `<span class="chip">${K.esc(x.name)}<button class="x" data-delx="${K.esc(x.path)}">✕</button></span>`).join('') || '<span class="d">No extensions loaded.</span>'}</div>
+    <div class="row"><div class="grow d">Load an unpacked Chrome extension folder (Manifest V3). Electron implements a subset of the extension APIs, so simple content-script extensions work best.</div><button class="btn primary" id="lx">Load unpacked…</button></div>` : '<div class="empty">Extensions are part of the Full edition.</div>'}</div>`],
+
+  data: ['Bookmarks & Data', () => `<h2>Bookmarks</h2><div class="card"><div class="row"><div class="grow d">Move bookmarks from Firefox, Opera or Chrome with an HTML export.</div><button class="btn" id="bmi">Import…</button><button class="btn" id="bme">Export…</button></div></div>
+    <h2>Profile folder</h2><div class="card"><div class="row"><div class="grow d" id="ud"></div><button class="btn" id="od">Open folder</button></div></div>`],
+
+  assistant: ['AI Assistant', () => !F.assistant ? '<h2>AI Assistant</h2><div class="card"><div class="empty">Not available in this edition.</div></div>' : `<h2>Nimbus</h2><div class="card">${row('Nimbus server', 'Where your assistant runs', `<input type="text" data-txt="nimbusServer" value="${K.esc(S.nimbusServer)}" style="width:300px">`)}
+    ${row('API key', '<span id="keyst">Checking…</span> Stored encrypted on this computer.', `<input type="password" id="aikey" placeholder="Paste key" style="width:220px"><button class="btn" id="aisave">Save</button><button class="btn danger" id="aiclear">Remove</button>`)}
+    ${row('Include current page automatically', 'Sends the visible text of the page you are on with each question (it only goes to your Nimbus server)', tog('aiPageContext', S.aiPageContext))}</div>
+    <h2>How it works</h2><div class="card"><div class="row"><div class="d"><b>Assistant</b> answers questions about the page, your tabs, extensions and Kitsune itself — read only.<br><b>Co-work</b> can click, type, scroll and open tabs for you, but asks before <i>every</i> action and never types into password fields. Open it with Ctrl/Cmd+Shift+A.</div></div></div>`],
+  about: ['About', () => `<h2>Kitsune</h2><div class="card" id="aboutc"></div>`]
+};
+
+function render() {
+  const keys = Object.keys(SECTIONS); if (!SECTIONS[tab]) tab = 'appearance';
+  $('#nav').innerHTML = `<h1><span id="logo">${I.fox}</span> Settings</h1>` + keys.map(k => `<a data-k="${k}" class="${k === tab ? 'cur' : ''}">${SECTIONS[k][0]}</a>`).join('');
+  $('#main').innerHTML = keys.map(k => `<section data-k="${k}" class="${k === tab ? 'cur' : ''}"><h1 style="margin-bottom:6px">${SECTIONS[k][0]}</h1>${k === tab ? SECTIONS[k][1]() : ''}</section>`).join('');
+  bind();
+}
+function bind() {
+  document.querySelectorAll('#nav a').forEach(a => a.onclick = () => { tab = a.dataset.k; history.replaceState(null, '', '#' + tab); render(); });
+  document.querySelectorAll('[data-tg]').forEach(t => t.onclick = () => set(t.dataset.tg, !S[t.dataset.tg]));
+  document.querySelectorAll('[data-sel]').forEach(s => s.onchange = () => set(s.dataset.sel, s.value));
+  document.querySelectorAll('[data-seg]').forEach(g => g.onclick = e => { const b = e.target.closest('button'); if (b) set(g.dataset.seg, b.dataset.v); });
+  document.querySelectorAll('[data-txt]').forEach(i => i.onchange = () => { set(i.dataset.txt, i.value.trim()); toast('Saved'); });
+  document.querySelectorAll('[data-num]').forEach(i => i.onchange = () => { set(i.dataset.num, parseInt(i.value, 10) || 0); toast('Saved'); });
+  document.querySelectorAll('[data-theme]').forEach(t => t.onclick = () => set('theme', t.dataset.theme));
+  const on = (id, fn) => { const e = $(id); if (e) e.onclick = fn; };
+  on('#mkdef', async () => { const ok = await call('app.setDefault'); toast(ok ? 'Kitsune is now your default browser' : 'Your OS may ask you to confirm in its default-apps settings'); defstat(); });
+  on('#dlDir', async () => { await call('dl.chooseDir'); });
+  on('#clear', async () => { await call('data.clear', { cookies: $('#c-cookies').checked, cache: $('#c-cache').checked, history: $('#c-history').checked, downloads: $('#c-downloads').checked, permissions: $('#c-permissions').checked }); toast('Cleared'); });
+  on('#impLib', async () => { try { const n = await call('kiroku.import', $('#lib').value); toast('Imported ' + n + ' titles'); } catch (e) { toast('That is not valid JSON'); } });
+  on('#resetLib', async () => { await call('kiroku.reset'); toast('Using the bundled library'); });
+  const ks = $('#keyst'); if (ks) { call('ai.config').then(c => { ks.textContent = c.hasToken ? 'Connected. ' : 'Not set. '; }); $('#aisave').onclick = async () => { const v = $('#aikey').value.trim(); if (!v) return; const r = await call('ai.setToken', v); $('#aikey').value = ''; toast(r.ok ? 'Key saved' : (r.error || 'Key rejected')); ks.textContent = r.ok ? 'Connected. ' : 'Not set. '; }; $('#aiclear').onclick = async () => { await call('ai.setToken', ''); ks.textContent = 'Not set. '; toast('Key removed'); }; }
+  const ids = $('#ids'); if (ids) ids.onchange = () => { const a = ids.value.split(/[\s,]+/).map(x => parseInt(x, 10)).filter(Number.isInteger); set('customAnilistIds', a); toast('Saved'); call('kiroku.reset').catch(() => {}); };
+  on('#addc', () => { const n = $('#cn').value.trim(); if (!n) return; set('containers', S.containers.concat([{ id: n.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now().toString(36).slice(-3), name: n, color: $('#cc').value, icon: '✦' }])); });
+  document.querySelectorAll('[data-delc]').forEach(b => b.onclick = () => set('containers', S.containers.filter(c => c.id !== b.dataset.delc)));
+  on('#addp', () => { let u = $('#pu').value.trim(); if (!u) return; if (!/^https?:/i.test(u)) u = 'https://' + u; set('pins', S.pins.concat([{ title: $('#pn').value.trim() || K.host(u), url: u }])); });
+  document.querySelectorAll('[data-delp]').forEach(b => b.onclick = () => set('pins', S.pins.filter((_, i) => i !== +b.dataset.delp)));
+  on('#lx', async () => { const r = await call('ext.load'); if (r && r.error) toast(r.error); else if (r && r.ok) toast('Loaded ' + r.ok); });
+  document.querySelectorAll('[data-delx]').forEach(b => b.onclick = () => call('ext.remove', b.dataset.delx));
+  on('#bmi', async () => { const n = await call('bm.import'); if (n) toast('Imported ' + n + ' bookmarks'); }); on('#bme', () => call('bm.export')); on('#od', () => call('app.openDataDir'));
+  if (tab === 'general') defstat();
+  if (tab === 'data' || tab === 'about' || tab === 'performance') call('app.info').then(i => {
+    const ud = $('#ud'); if (ud) ud.textContent = i.userData;
+    const ab = $('#aboutc'); if (ab) ab.innerHTML = [['Edition', i.edition === 'lite' ? 'Lite (portable)' : 'Full'], ['Version', i.version], ['Chromium', i.chromium], ['Electron', i.electron], ['Platform', i.platform]].map(x => `<div class="row"><div class="grow t">${x[0]}</div><div class="d">${K.esc(x[1])}</div></div>`).join('');
+    const pf = $('#perf'); if (pf) pf.innerHTML = [['Open tabs', i.stats.tabs], ['Sleeping tabs', i.stats.sleeping], ['Windows', i.stats.windows], ['Tracker hosts blocked', i.blocklist]].map(x => `<div class="row"><div class="grow t">${x[0]}</div><div class="d">${x[1]}</div></div>`).join('');
+  });
+}
+async function defstat() { const i = await call('app.info'); const e = $('#defst'); if (e) e.textContent = i.isDefault ? 'Kitsune is your default browser.' : 'Not the default yet.'; }
+
+(async () => {
+  st = await K.init(); S = st.settings; F = st.features; render();
+  document.addEventListener('k:settings', e => { S = e.detail; const sy = scrollY; render(); scrollTo(0, sy); });
+})();
+</script></body></html>

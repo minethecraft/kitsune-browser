@@ -1,0 +1,26 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>History</title>
+<link rel="stylesheet" href="kitsune://assets/themes.css"><link rel="stylesheet" href="kitsune://assets/page.css"></head>
+<body><div class="wrap">
+  <h1><span id="logo"></span> History</h1><p class="lead">Pages you've visited. Private windows are never recorded.</p>
+  <div class="tools"><input id="s" type="search" placeholder="Search history…" autofocus>
+    <select id="range"><option value="hour">Last hour</option><option value="day">Last day</option><option value="week">Last week</option><option value="all">Everything</option></select>
+    <button class="btn danger" id="clr">Clear history</button></div>
+  <div id="list"></div><div class="empty" id="empty" hidden>No history yet.</div>
+</div>
+<script src="kitsune://assets/icons.js"></script><script src="kitsune://assets/common.js"></script>
+<script>
+const $ = s => document.querySelector(s), call = (n, ...a) => kitsune.call(n, ...a);
+let items = [];
+function dayLabel(t) { const d = new Date(t), n = new Date(); const s = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime(); const diff = (s(n) - s(d)) / 864e5; return diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }); }
+function render() {
+  $('#empty').hidden = items.length > 0; let last = '', html = '';
+  for (const h of items) { const l = dayLabel(h.time); if (l !== last) { html += `<div class="day">${l}</div>`; last = l; }
+    html += `<div class="row card" style="margin-bottom:6px"><img class="favi" src="${K.favicon(h.url)}" onerror="this.style.visibility='hidden'"><div class="grow"><a class="t" href="${K.esc(h.url)}">${K.esc(h.title || h.url)}</a><div class="d" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${K.esc(h.url)}</div></div><span class="d">${new Date(h.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span><button class="x" data-u="${K.esc(h.url)}" title="Remove">✕</button></div>`; }
+  $('#list').innerHTML = html;
+  $('#list').querySelectorAll('.x').forEach(b => b.onclick = async () => { await call('hist.remove', b.dataset.u); load(); });
+}
+async function load() { items = await call('hist.list', $('#s').value, 600); render(); }
+(async () => { await K.init(); $('#logo').innerHTML = I.clock; load(); let t; $('#s').addEventListener('input', () => { clearTimeout(t); t = setTimeout(load, 120); });
+  $('#clr').onclick = async () => { await call('hist.clear', $('#range').value); load(); }; })();
+</script></body></html>

@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="kitsune://assets/themes.css">
+<style>
+html, body { background: transparent; overflow: hidden; user-select: none; -webkit-user-select: none; }
+#side { height: 100vh; width: 54px; background: var(--bg); border-right: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; padding: 8px 0; gap: 4px; position: relative; overflow: hidden; }
+#side::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, var(--glow), transparent 28%); opacity: .35; }
+.sb { position: relative; z-index: 1; width: 38px; height: 38px; border: 0; border-radius: 12px; background: transparent; color: var(--muted); display: grid; place-items: center; cursor: pointer; transition: transform .18s cubic-bezier(.2,.9,.3,1.4), background .18s, color .18s; flex: none; padding: 0; }
+.sb:hover { background: var(--bg3); color: var(--fg); transform: scale(1.12) translateX(1px); }
+.sb:active { transform: scale(.92); }
+.sb.cur { color: var(--accent); background: var(--bg2); box-shadow: inset 3px 0 0 var(--accent); }
+.sb img { width: 20px; height: 20px; border-radius: 5px; } .sb .lt { font-weight: 800; font-size: 14px; color: var(--accent); }
+.logo { margin-bottom: 4px; } .logo:hover { transform: rotate(-8deg) scale(1.15); }
+.div { width: 24px; height: 1px; background: var(--line); margin: 4px 0; flex: none; z-index: 1; }
+.grow { flex: 1; min-height: 4px; }
+.ws { position: relative; z-index: 1; width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; display: grid; place-items: center; font-size: 11px; transition: transform .18s, border-color .18s, box-shadow .18s; flex: none; }
+.ws:hover { transform: scale(1.2); } .ws.cur { border-color: var(--fg); box-shadow: 0 0 0 3px var(--glow); }
+.ws.all { background: conic-gradient(#ff8fb8,#ffd166,#7ee0a5,#5ab0ff,#b48cff,#ff8fb8); }
+.pins { display: flex; flex-direction: column; gap: 4px; align-items: center; overflow-y: auto; overflow-x: hidden; max-height: 100%; scrollbar-width: none; z-index: 1; }
+.pins::-webkit-scrollbar { display: none; }
+.sb.in { animation: sbIn .35s cubic-bezier(.2,.9,.3,1.3) both; } @keyframes sbIn { from { opacity: 0; transform: translateX(-14px) scale(.7); } }
+</style>
+</head>
+<body>
+<div id="side"></div>
+<script src="kitsune://assets/icons.js"></script>
+<script src="kitsune://assets/common.js"></script>
+<script>
+const $ = s => document.querySelector(s), call = (n, ...a) => kitsune.call(n, ...a);
+let S, F, snap = null, first = true;
+function render() {
+  if (!S) return;
+  const root = $('#side'); const cur = snap ? snap.tabs.find(t => t.id === snap.activeId) : null; const curHost = cur ? K.host(cur.url) : '';
+  const pins = (S.pins || []).map((p, i) => { const h = K.host(p.url); const on = h && h === curHost;
+    return `<button class="sb${on ? ' cur' : ''}${first ? ' in' : ''}" data-u="${K.esc(p.url)}" title="${K.esc(p.title)}" style="animation-delay:${i * 40}ms"><img src="${K.favicon(p.url)}" onerror="this.outerHTML='<span class=lt>${K.esc((p.title || '?')[0].toUpperCase())}</span>'"></button>`; }).join('');
+  const ws = (S.containers || []).map(c => `<div class="ws${snap && snap.workspace === c.id ? ' cur' : ''}" data-w="${c.id}" title="${K.esc(c.name)} workspace" style="background:${c.color}"></div>`).join('');
+  root.innerHTML =
+    `<button class="sb logo" data-c="newTab" title="New tab">${I.fox.replace('width="28" height="28"', 'width="30" height="30"')}</button>` +
+    `<button class="sb" data-p="anime" title="Anime Hub">${I.anime}</button><button class="sb" data-c="assistant" title="AI assistant">${I.spark}</button>` + (S.kirokuUrl ? `<button class="sb" data-u="${K.esc(S.kirokuUrl)}" title="Kiroku">${I.book}</button>` : '') +
+    `<div class="div"></div><div class="pins">${pins}</div><button class="sb" data-c="pinCurrent" title="Pin this site to the sidebar">${I.pin}</button>` +
+    `<div class="grow"></div>` +
+    (F.containers ? `<div class="ws all${snap && snap.workspace === 'all' ? ' cur' : ''}" data-w="all" title="All workspaces"></div>${ws}<div class="div"></div>` : '') +
+    `<button class="sb" data-p="bookmarks" title="Bookmarks">${I.star}</button><button class="sb" data-p="history" title="History">${I.clock}</button><button class="sb" data-p="downloads" title="Downloads">${I.download}</button><button class="sb" data-p="settings" title="Settings">${I.gear}</button>`;
+  first = false;
+  root.querySelectorAll('[data-u]').forEach(b => b.onclick = () => call('cmd', 'openUrl', b.dataset.u));
+  root.querySelectorAll('[data-p]').forEach(b => b.onclick = () => call('cmd', 'openPage', b.dataset.p));
+  root.querySelectorAll('[data-c]').forEach(b => b.onclick = () => call('cmd', b.dataset.c));
+  root.querySelectorAll('[data-w]').forEach(b => b.onclick = () => call('cmd', 'workspace', b.dataset.w));
+}
+(async () => { const st = await K.init(); S = st.settings; F = st.features; snap = st.snapshot; render();
+  kitsune.on('tabs', s => { const changed = !snap || s.activeId !== snap.activeId || s.workspace !== snap.workspace || (s.tabs.find(t => t.id === s.activeId) || {}).url !== (snap.tabs.find(t => t.id === snap.activeId) || {}).url; snap = s; if (changed) render(); });
+  kitsune.on('settings', s => { S = s; render(); });
+})();
+</script>
+</body>
+</html>

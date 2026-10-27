@@ -1,0 +1,26 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Can't reach this page</title>
+<link rel="stylesheet" href="kitsune://assets/themes.css"><link rel="stylesheet" href="kitsune://assets/page.css">
+<style>
+.c { min-height: 100vh; display: grid; place-items: center; text-align: center; padding: 30px; }
+.fox { width: 150px; height: 150px; margin: 0 auto 18px; animation: bob 3.2s ease-in-out infinite; filter: drop-shadow(0 14px 24px rgba(0,0,0,.4)); } .fox svg { width: 100%; height: 100%; }
+@keyframes bob { 50% { transform: translateY(-12px) rotate(2deg); } }
+h1 { justify-content: center; font-size: 28px; } code { background: var(--bg2); padding: 3px 10px; border-radius: 8px; color: var(--accent2); }
+.btns { margin-top: 22px; display: flex; gap: 10px; justify-content: center; } ul { color: var(--muted); text-align: left; display: inline-block; margin: 16px 0 0; }
+</style></head>
+<body><div class="c"><div>
+  <div class="fox" id="fox"></div>
+  <h1>Kitsune can't reach this page</h1>
+  <p class="lead"><code id="d"></code></p>
+  <p class="lead" id="u" style="word-break:break-all;max-width:640px;margin:0 auto"></p>
+  <ul><li>Check your connection or try again in a moment</li><li>Make sure the address is spelled right</li><li>If it's a local server, check that it's running</li></ul>
+  <div class="btns"><button class="btn primary" id="retry">Try again</button><button class="btn" id="home">New tab</button></div>
+</div></div>
+<script src="kitsune://assets/icons.js"></script><script src="kitsune://assets/common.js"></script>
+<script>
+const p = new URLSearchParams(location.search); const u = p.get('u') || '';
+document.getElementById('fox').innerHTML = I.fox; document.getElementById('d').textContent = (p.get('d') || 'ERR_UNKNOWN').replace(/^net::/, ''); document.getElementById('u').textContent = u;
+document.getElementById('retry').onclick = () => { if (/^https?:/.test(u)) location.href = u; else history.back(); };
+document.getElementById('home').onclick = () => location.href = 'kitsune://newtab/';
+K.init();
+</script></body></html>

@@ -1,0 +1,140 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>New Tab</title>
+<link rel="stylesheet" href="kitsune://assets/themes.css">
+<style>
+html, body { overflow: hidden; background: var(--bg); }
+.layer { position: fixed; inset: -4%; background-size: cover; background-position: center; opacity: 0; transition: opacity 1.6s ease; will-change: opacity, transform; }
+.layer.on { opacity: 1; }
+:root:not([data-anim="off"]) .layer.on.kb { animation: kb var(--kb, 34s) ease-in-out both; }
+@keyframes kb { from { transform: scale(1.02) translate3d(0,0,0); } to { transform: scale(1.14) translate3d(var(--kx, -1.5%), var(--ky, -1%), 0); } }
+.layer.cover { filter: blur(26px) saturate(1.15); }
+#fallback { position: fixed; inset: 0; background: radial-gradient(900px 600px at 20% 20%, var(--glow), transparent 60%), radial-gradient(800px 600px at 85% 80%, color-mix(in srgb, var(--accent2) 30%, transparent), transparent 60%), var(--bg); }
+#scrim { position: fixed; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.28), rgba(0,0,0,.05) 35%, rgba(0,0,0,.5)), radial-gradient(1200px 700px at 50% 45%, transparent 35%, var(--scrim)); pointer-events: none; }
+canvas#fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#ui { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; padding-top: 11vh; transition: opacity .5s, transform .5s; }
+body.hideui #ui, body.hideui #now, body.hideui #ctl { opacity: 0; pointer-events: none; transform: translateY(8px); }
+#clock { font-size: clamp(56px, 9vw, 112px); font-weight: 200; letter-spacing: -.02em; line-height: 1; text-shadow: 0 4px 40px rgba(0,0,0,.45); color: #fff; animation: rise .8s cubic-bezier(.2,.8,.3,1) both; }
+#date { margin-top: 8px; color: rgba(255,255,255,.86); font-size: 16px; text-shadow: 0 2px 14px rgba(0,0,0,.5); letter-spacing: .04em; animation: rise .8s .08s cubic-bezier(.2,.8,.3,1) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(16px); } }
+form#sf { margin-top: 34px; width: min(620px, 86vw); display: flex; align-items: center; gap: 4px; padding: 6px 8px 6px 18px; border-radius: 999px; background: rgba(20,14,28,.42); border: 1px solid rgba(255,255,255,.22); backdrop-filter: blur(18px) saturate(1.3); box-shadow: 0 18px 50px rgba(0,0,0,.35); transition: box-shadow .3s, border-color .3s, transform .3s; animation: rise .8s .16s cubic-bezier(.2,.8,.3,1) both; }
+form#sf:focus-within { border-color: var(--accent); box-shadow: 0 18px 60px rgba(0,0,0,.4), 0 0 0 4px var(--glow); transform: scale(1.02); }
+#q { flex: 1; background: transparent; border: 0; outline: 0; color: #fff; font-size: 17px; padding: 10px 4px; } #q::placeholder { color: rgba(255,255,255,.62); }
+#sf button { border: 0; width: 40px; height: 40px; border-radius: 50%; background: var(--accent); color: var(--accent-fg); display: grid; place-items: center; cursor: pointer; transition: transform .2s; } #sf button:hover { transform: scale(1.1) rotate(-6deg); }
+#eng { color: rgba(255,255,255,.75); font-size: 12px; margin-right: 4px; white-space: nowrap; }
+#dial { margin-top: 38px; display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; width: min(760px, 90vw); }
+.tile { width: 88px; display: flex; flex-direction: column; align-items: center; gap: 8px; color: #fff; text-decoration: none !important; animation: rise .7s cubic-bezier(.2,.8,.3,1) both; }
+.tile .ic { width: 58px; height: 58px; border-radius: 18px; background: rgba(20,14,28,.42); border: 1px solid rgba(255,255,255,.2); backdrop-filter: blur(14px); display: grid; place-items: center; transition: transform .25s cubic-bezier(.2,.9,.3,1.5), box-shadow .25s, border-color .25s; }
+.tile:hover .ic { transform: translateY(-6px) scale(1.08) rotate(-2deg); box-shadow: 0 16px 30px rgba(0,0,0,.4), 0 0 0 3px var(--glow); border-color: var(--accent); }
+.tile .ic img { width: 28px; height: 28px; border-radius: 7px; } .tile .ic b { font-size: 22px; }
+.tile span { font-size: 12px; text-shadow: 0 1px 8px rgba(0,0,0,.7); max-width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#watching { margin-top: 30px; width: min(820px, 92vw); }
+#watching h3 { margin: 0 0 10px 6px; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.8); text-shadow: 0 1px 8px rgba(0,0,0,.6); }
+#wrow { display: flex; gap: 12px; justify-content: center; }
+.cw { position: relative; width: 94px; height: 134px; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255,255,255,.25); box-shadow: 0 12px 28px rgba(0,0,0,.45); transition: transform .3s cubic-bezier(.2,.9,.3,1.4), box-shadow .3s; animation: rise .8s cubic-bezier(.2,.8,.3,1) both; display: block; }
+.cw img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .6s; }
+.cw:hover { transform: translateY(-8px) scale(1.06); box-shadow: 0 20px 40px rgba(0,0,0,.5), 0 0 0 3px var(--glow); } .cw:hover img { transform: scale(1.1); }
+.cw::after { content: attr(data-t); position: absolute; left: 0; right: 0; bottom: 0; padding: 22px 7px 6px; font-size: 10.5px; line-height: 1.2; color: #fff; background: linear-gradient(transparent, rgba(0,0,0,.85)); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+#now { position: fixed; left: 22px; bottom: 20px; max-width: min(440px, 46vw); padding: 12px 16px; border-radius: 16px; background: rgba(18,12,26,.5); border: 1px solid rgba(255,255,255,.18); backdrop-filter: blur(16px); color: #fff; transition: opacity .5s, transform .5s; animation: rise .9s .3s both; }
+#now small { display: block; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.65); }
+#now b { display: block; font-size: 15px; margin: 2px 0 6px; line-height: 1.25; }
+#now .meta { font-size: 12px; color: rgba(255,255,255,.75); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+#now .st { padding: 1px 9px; border-radius: 999px; background: var(--accent); color: var(--accent-fg); font-weight: 700; font-size: 11px; }
+#now a.go { margin-left: auto; padding: 5px 12px; border-radius: 999px; background: rgba(255,255,255,.14); color: #fff; font-size: 12px; font-weight: 600; text-decoration: none; transition: background .2s, transform .2s; } #now a.go:hover { background: var(--accent); color: var(--accent-fg); transform: translateY(-1px); }
+#ctl { position: fixed; right: 20px; bottom: 20px; display: flex; gap: 6px; transition: opacity .5s; }
+#ctl button { width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(255,255,255,.22); background: rgba(18,12,26,.5); color: #fff; backdrop-filter: blur(14px); cursor: pointer; display: grid; place-items: center; transition: background .2s, transform .2s; } #ctl button:hover { background: var(--accent); color: var(--accent-fg); transform: translateY(-2px); }
+#priv { position: fixed; top: 18px; right: 22px; padding: 10px 16px; border-radius: 14px; background: linear-gradient(90deg,#7b4dff,#c04dff); color: #fff; font-weight: 600; box-shadow: 0 0 30px rgba(150,80,255,.5); display: none; }
+body.private #priv { display: block; }
+</style>
+</head>
+<body>
+<div id="fallback"></div>
+<div class="layer" id="la"></div><div class="layer" id="lb"></div>
+<div id="scrim"></div>
+<canvas id="fx"></canvas>
+<div id="priv">Private window &mdash; history and cookies are discarded when you close it.</div>
+<div id="ui">
+  <div id="clock"></div>
+  <div id="date"></div>
+  <form id="sf" autocomplete="off"><span id="eng"></span><input id="q" type="text" placeholder="Search or enter address" spellcheck="false" autofocus><button type="submit" id="go"></button></form>
+  <div id="dial"></div>
+  <div id="watching" hidden><h3>Currently watching</h3><div id="wrow"></div></div>
+</div>
+<div id="now" hidden></div>
+<div id="ctl"><button id="prev" title="Previous background (&larr;)"></button><button id="next" title="Next background (&rarr;)"></button><button id="hide" title="Hide interface (H)"></button></div>
+<script src="kitsune://assets/icons.js"></script>
+<script src="kitsune://assets/common.js"></script>
+<script src="kitsune://assets/particles.js"></script>
+<script>
+const $ = s => document.querySelector(s), call = (n, ...a) => kitsune.call(n, ...a);
+if (/private=1/.test(location.search)) document.body.classList.add('private');
+let S, list = [], idx = -1, timer = 0, front = 'la', stopFx = () => {}, paused = false;
+
+function tick() {
+  const d = new Date(); const h = d.getHours();
+  $('#clock').textContent = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(/\s?(AM|PM)/i, '');
+  const g = h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+  $('#date').textContent = (S && S.displayName ? g + ', ' + S.displayName + ' · ' : '') + d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+}
+async function dial() {
+  const el = $('#dial'); const seen = new Set(); const tiles = [];
+  const add = (title, url) => { const h = K.host(url); if (!h || seen.has(h) || tiles.length >= 10) return; seen.add(h); tiles.push({ title, url }); };
+  (S.pins || []).forEach(p => add(p.title, p.url));
+  try { const hist = await call('hist.list', '', 400); const agg = {}; for (const x of hist) { const h = K.host(x.url); if (h) (agg[h] = agg[h] || { url: x.url.replace(/^(https?:\/\/[^/]+).*/, '$1/'), v: 0, t: x.title }).v += x.visits; } Object.entries(agg).sort((a, b) => b[1].v - a[1].v).slice(0, 8).forEach(([h, o]) => add(h, o.url)); } catch (_) {}
+  el.innerHTML = tiles.map((t, i) => `<a class="tile" href="${K.esc(t.url)}" style="animation-delay:${.25 + i * .05}s"><div class="ic"><img src="${K.favicon(t.url)}" onerror="this.outerHTML='<b>${K.esc((t.title || '?')[0].toUpperCase())}</b>'"></div><span>${K.esc(t.title)}</span></a>`).join('');
+}
+function crossfade(url, cover) {
+  const nxt = front === 'la' ? 'lb' : 'la'; const cur = $('#' + front), n = $('#' + nxt);
+  n.className = 'layer' + (cover ? ' cover' : ''); n.style.backgroundImage = `url("${url}")`;
+  n.style.setProperty('--kx', (Math.random() * 3 - 1.5).toFixed(2) + '%'); n.style.setProperty('--ky', (Math.random() * 2 - 1).toFixed(2) + '%');
+  n.style.setProperty('--kb', Math.max(20, (S.bgInterval || 30) + 8) + 's');
+  void n.offsetWidth; n.classList.add('on', 'kb'); cur.classList.remove('on'); front = nxt;
+}
+const best = x => (x.hd && x.hd.url) || x.banner || null;
+function show(i) {
+  if (!list.length) return; idx = (i + list.length) % list.length; const it = list[idx];
+  const url = best(it) || it.cover; if (!url) return show(idx + 1);
+  const im = new Image(); im.onload = () => {
+    if (list[idx] !== it) return; crossfade(url, !best(it)); $('#fallback').style.opacity = 0;
+    const now = $('#now'); now.hidden = false;
+    now.innerHTML = `<small>${it.status === 'watching' ? 'Currently watching' : 'Watched'}${it.rating ? ' · ★ ' + it.rating : ''}</small><b>${K.esc(it.title)}</b><div class="meta"><span class="st">${it.status === 'watching' ? 'Watching' : 'Watched'}</span>${it.score ? '<span>AniList ' + it.score + '%</span>' : ''}<a class="go" href="${K.esc(it.watchUrl)}">${/anilist\.co/.test(it.watchUrl) ? 'View on AniList' : 'Watch on Aniwatch'}</a></div>`;
+    if (it.color) call('accent.set', it.color);
+  };
+  im.onerror = () => { list.splice(idx, 1); show(idx); }; im.src = url;
+  // warm the next one
+  const nx = list[(idx + 1) % list.length]; if (nx) { const p = new Image(); p.src = best(nx) || nx.cover || ''; }
+  clearTimeout(timer); if (!paused && list.length > 1) timer = setTimeout(() => show(idx + 1), (S.bgInterval || 30) * 1000);
+}
+async function loadBg() {
+  if (!S.bgKiroku) { call('accent.set', null); return; }
+  try { list = (await call('kiroku.bg')).filter(x => best(x) || x.cover); } catch (_) { list = []; }
+  const withBanner = list.filter(best), rest = list.filter(x => !best(x));
+  list = withBanner.concat(rest.slice(0, 4));
+  if (list.length) show(0);
+  const w = list.filter(x => x.status === 'watching' && x.cover).slice(0, 7);
+  if (w.length) { $('#watching').hidden = false; $('#wrow').innerHTML = w.map((x, i) => `<a class="cw" href="${K.esc(x.watchUrl)}" data-t="${K.esc(x.title)}" style="animation-delay:${.4 + i * .07}s"><img src="${K.esc(x.cover)}" loading="lazy"></a>`).join(''); }
+}
+function fx() { stopFx(); const t = K.particleType(); stopFx = Particles.start($('#fx'), t); }
+
+(async () => {
+  const st = await K.init(); S = st.settings;
+  $('#go').innerHTML = I.search; $('#prev').innerHTML = I.fwd.replace('<path d="M9 5l7 7-7 7"/>', '<path d="M15 5l-7 7 7 7"/>'); $('#next').innerHTML = I.fwd; $('#hide').innerHTML = I.fox.replace('width="28" height="28"', 'width="20" height="20"');
+  $('#eng').textContent = (st.engines[S.searchEngine] || {}).name || '';
+  tick(); setInterval(tick, 10000); dial(); loadBg(); fx();
+  document.addEventListener('k:applied', fx);
+  document.addEventListener('k:settings', e => { S = e.detail; $('#eng').textContent = (st.engines[S.searchEngine] || {}).name || ''; dial(); });
+  kitsune.on('kiroku', async () => { if (!list.length) return loadBg(); try { const fresh = await call('kiroku.bg'); if (fresh.length !== list.length && !fresh.every(f => list.some(x => x.id === f.id))) return loadBg(); for (const f of fresh) { const o = list.find(x => x.id === f.id); if (o) { o.hd = f.hd; o.cover = f.cover; } } } catch (_) { loadBg(); } });
+  $('#sf').addEventListener('submit', e => { e.preventDefault(); const v = $('#q').value.trim(); if (v) call('cmd', 'navigate', v); });
+  $('#next').onclick = () => show(idx + 1); $('#prev').onclick = () => show(idx - 1); $('#hide').onclick = () => document.body.classList.toggle('hideui');
+  addEventListener('keydown', e => {
+    if (document.activeElement === $('#q') && e.key !== 'Escape') return;
+    if (e.key === 'ArrowRight') show(idx + 1); if (e.key === 'ArrowLeft') show(idx - 1);
+    if (e.key.toLowerCase() === 'h') document.body.classList.toggle('hideui');
+    if (e.key === ' ') { paused = !paused; if (!paused) show(idx); else clearTimeout(timer); e.preventDefault(); }
+  });
+})();
+</script>
+</body>
+</html>

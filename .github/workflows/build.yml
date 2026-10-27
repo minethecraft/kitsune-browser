@@ -1,0 +1,26 @@
+name: Build Kitsune
+on: { workflow_dispatch: {}, push: { tags: ['v*'] } }
+jobs:
+  build:
+    strategy:
+      matrix: { os: [windows-latest, macos-latest], ed: [full, lite] }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci
+      - run: node scripts/set-edition.js ${{ matrix.ed }}
+      - name: Windows installer (full) / portable exe (lite)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          if [ "${{ matrix.ed }}" = full ]; then npx electron-builder --win nsis --x64 --publish never --config.nsis.artifactName='Kitsune-Setup-${version}.${ext}';
+          else npx electron-builder --win portable --x64 --publish never --config.portable.artifactName='Kitsune-Lite-Portable-${version}.${ext}'; fi
+      - name: macOS dmg (full) / zip (lite)
+        if: runner.os == 'macOS'
+        run: |
+          if [ "${{ matrix.ed }}" = full ]; then npx electron-builder --mac dmg --x64 --arm64 --publish never --config.mac.artifactName='Kitsune-${version}-${arch}.${ext}';
+          else npx electron-builder --mac zip --x64 --arm64 --publish never --config.mac.artifactName='Kitsune-Lite-${version}-mac-${arch}.${ext}'; fi
+      - uses: actions/upload-artifact@v4
+        with: { name: "${{ matrix.os }}-${{ matrix.ed }}", path: dist/*.{exe,dmg,zip} }

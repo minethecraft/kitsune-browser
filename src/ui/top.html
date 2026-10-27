@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="kitsune://assets/themes.css">
+<link rel="stylesheet" href="top.css">
+</head>
+<body>
+<div id="chrome">
+  <div id="fx" class="fx-loop" aria-hidden="true"></div>
+  <div id="tabstrip">
+    <div class="padL"></div>
+    <div id="privpill" hidden>Private</div>
+    <div id="tabs"></div>
+    <button id="newtab" class="ib" title="New tab"></button>
+    <div class="grow"></div>
+    <div class="padR"></div>
+  </div>
+  <div id="toolbar">
+    <div class="grp">
+      <button id="back" class="ib" title="Back"></button>
+      <button id="fwd" class="ib" title="Forward"></button>
+      <button id="reload" class="ib" title="Reload"></button>
+    </div>
+    <div id="omni">
+      <button id="site" class="ib sm" tabindex="-1"></button>
+      <div id="urlview"></div>
+      <input id="omni-in" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="Search or enter address  (type &gt; for commands)">
+      <button id="star" class="ib sm" title="Bookmark this page"></button>
+    </div>
+    <div class="grp">
+      <button id="b-ai" class="ib" title="AI assistant (Ctrl/Cmd+Shift+A)"></button>
+      <button id="b-split" class="ib" title="Split view"></button>
+      <button id="b-reader" class="ib" title="Reader view"></button>
+      <button id="b-pip" class="ib" title="Picture-in-picture"></button>
+      <button id="b-shot" class="ib" title="Screenshot"></button>
+      <button id="b-shield" class="ib" title="Tracking protection"><b class="badge" hidden></b></button>
+      <button id="b-dl" class="ib" title="Downloads"><svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15"/></svg></button>
+      <button id="b-menu" class="ib" title="Menu"></button>
+    </div>
+  </div>
+  <div id="progress"><i></i></div>
+  <div id="bar"></div>
+  <div id="find">
+    <div class="fbox">
+      <span class="fi"></span>
+      <input id="find-in" spellcheck="false" placeholder="Find in page">
+      <span id="find-count"></span>
+      <button id="find-prev" class="ib sm"></button>
+      <button id="find-next" class="ib sm"></button>
+      <button id="find-close" class="ib sm"></button>
+    </div>
+  </div>
+</div>
+
+<div id="overlay" hidden>
+  <div id="backdrop"></div>
+  <div id="suggest" class="panel" hidden></div>
+  <div id="menu" class="panel" hidden></div>
+  <div id="shieldp" class="panel" hidden></div>
+  <div id="dlp" class="panel" hidden></div>
+  <div id="morep" class="panel" hidden></div>
+  <div id="toast" hidden></div>
+</div>
+<script src="kitsune://assets/icons.js"></script>
+<script src="kitsune://assets/common.js"></script>
+<script src="top.js"></script>
+</body>
+</html>

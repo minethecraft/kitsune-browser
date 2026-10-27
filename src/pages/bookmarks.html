@@ -1,0 +1,32 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Bookmarks</title>
+<link rel="stylesheet" href="kitsune://assets/themes.css"><link rel="stylesheet" href="kitsune://assets/page.css"></head>
+<body><div class="wrap">
+  <h1><span id="logo"></span> Bookmarks</h1><p class="lead">Show a bookmark in the toolbar with the star toggle. Imports Firefox, Opera and Chrome HTML exports.</p>
+  <div class="tools"><input id="s" type="search" placeholder="Search bookmarks…">
+    <button class="btn" id="imp">Import HTML…</button><button class="btn" id="exp">Export HTML…</button></div>
+  <form class="tools" id="addf"><input id="nu" type="text" placeholder="Add a URL (https://…)"><input id="nt" type="text" placeholder="Title (optional)"><button class="btn primary">Add</button></form>
+  <div id="list"></div><div class="empty" id="empty" hidden>No bookmarks yet. Press Ctrl/⌘+D on any page.</div>
+</div>
+<script src="kitsune://assets/icons.js"></script><script src="kitsune://assets/common.js"></script>
+<script>
+const $ = s => document.querySelector(s), call = (n, ...a) => kitsune.call(n, ...a);
+let items = [];
+function render() {
+  const q = $('#s').value.toLowerCase(); const list = items.filter(b => !q || b.title.toLowerCase().includes(q) || b.url.toLowerCase().includes(q));
+  $('#empty').hidden = list.length > 0;
+  $('#list').innerHTML = `<div class="card">${list.map(b => `<div class="row" data-id="${b.id}"><img class="favi" src="${K.favicon(b.url)}" onerror="this.style.visibility='hidden'"><div class="grow"><input type="text" class="tt" value="${K.esc(b.title)}" style="width:100%;border-color:transparent;background:transparent;font-weight:600"><a class="d" href="${K.esc(b.url)}">${K.esc(b.url)}</a></div><span class="d">Toolbar</span><div class="tg ${b.bar ? 'on' : ''}"></div><button class="x" title="Delete">✕</button></div>`).join('')}</div>`;
+  $('#list').querySelectorAll('.row').forEach(r => { const id = r.dataset.id;
+    r.querySelector('.tt').addEventListener('change', e => call('bm.update', id, { title: e.target.value }));
+    r.querySelector('.tt').addEventListener('focus', e => e.target.style.borderColor = ''); r.querySelector('.tt').addEventListener('blur', e => e.target.style.borderColor = 'transparent');
+    r.querySelector('.tg').onclick = async e => { const b = items.find(x => x.id === id); await call('bm.update', id, { bar: !b.bar }); };
+    r.querySelector('.x').onclick = () => call('bm.remove', id); });
+}
+async function load() { items = await call('bm.list'); render(); }
+(async () => { await K.init(); $('#logo').innerHTML = I.star; load(); kitsune.on('bookmarks', load);
+  $('#s').addEventListener('input', render);
+  $('#imp').onclick = async () => { const n = await call('bm.import'); if (n) alert('Imported ' + n + ' bookmarks'); };
+  $('#exp').onclick = () => call('bm.export');
+  $('#addf').addEventListener('submit', async e => { e.preventDefault(); let u = $('#nu').value.trim(); if (!u) return; if (!/^https?:/i.test(u)) u = 'https://' + u; await call('bm.add', { url: u, title: $('#nt').value.trim() || K.host(u) }); $('#nu').value = ''; $('#nt').value = ''; });
+})();
+</script></body></html>

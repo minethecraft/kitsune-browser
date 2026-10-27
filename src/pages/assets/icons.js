@@ -1,0 +1,43 @@
+// Inline stroke icons (24x24). Usage: I.back  ->  '<svg ...>'
+(function () {
+  const s = d => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  window.I = {
+    back: s('<path d="M15 5l-7 7 7 7"/>'),
+    fwd: s('<path d="M9 5l7 7-7 7"/>'),
+    reload: s('<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>'),
+    stop: s('<path d="M6 6l12 12M18 6L6 18"/>'),
+    home: s('<path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/>'),
+    star: s('<path d="M12 3.5l2.6 5.5 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 9.8l6-.8z"/>'),
+    starFill: `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 3.5l2.6 5.5 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 9.8l6-.8z"/></svg>`,
+    lock: s('<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'),
+    warn: s('<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17.5v.01"/>'),
+    shield: s('<path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/>'),
+    download: s('<path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/>'),
+    menu: s('<path d="M4 7h16M4 12h16M4 17h16"/>'),
+    plus: s('<path d="M12 5v14M5 12h14"/>'),
+    close: s('<path d="M6 6l12 12M18 6L6 18"/>'),
+    spark: s('<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/>'),
+    split: s('<rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M12 5v14"/>'),
+    reader: s('<path d="M5 4h11l3 3v13H5z"/><path d="M8 10h8M8 13h8M8 16h5"/>'),
+    pip: s('<rect x="3" y="5" width="18" height="14" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1" fill="currentColor"/>'),
+    shot: s('<path d="M4 8V5h3M17 5h3v3M20 16v3h-3M7 19H4v-3"/><circle cx="12" cy="12" r="3"/>'),
+    sound: s('<path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16 9c1.5 1.5 1.5 4.5 0 6"/>'),
+    mute: s('<path d="M4 10v4h4l5 4V6L8 10z"/><path d="M17 9l4 6M21 9l-4 6"/>'),
+    moon: s('<path d="M20 14.5A8 8 0 1 1 9.5 4 6.5 6.5 0 0 0 20 14.5z"/>'),
+    search: s('<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/>'),
+    clock: s('<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>'),
+    book: s('<path d="M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h10"/>'),
+    gear: s('<circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.6a7 7 0 0 0-2 1.2l-2.3-.9-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.9a7 7 0 0 0 2 1.2l.4 2.6h4l.4-2.6a7 7 0 0 0 2-1.2l2.3.9 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"/>'),
+    anime: s('<path d="M12 3l2.4 5 5.6.7-4.1 3.8 1.1 5.5L12 15.3 7 18l1.1-5.5L4 8.7 9.6 8z"/><path d="M4 21h16"/>'),
+    pin: s('<path d="M9 4h6l-1 6 3 3H7l3-3z"/><path d="M12 13v7"/>'),
+    print: s('<path d="M7 9V4h10v5"/><rect x="4" y="9" width="16" height="8" rx="2"/><path d="M7 14h10v6H7z"/>'),
+    find: s('<circle cx="10" cy="10" r="5.5"/><path d="M14.5 14.5L20 20"/>'),
+    up: s('<path d="M6 14l6-6 6 6"/>'), down: s('<path d="M6 10l6 6 6-6"/>'),
+    folder: s('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
+    trash: s('<path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/>'),
+    globe: s('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>'),
+    play: `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`,
+    external: s('<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5H5V6h5"/>'),
+    fox: `<svg viewBox="0 0 64 64" width="28" height="28"><defs><linearGradient id="fg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--accent2)"/></linearGradient></defs><path d="M8 10l16 9c5-2 11-2 16 0l16-9-2 24c0 12-9 22-22 22S10 46 10 34z" fill="url(#fg)"/><path d="M22 36l5 4M42 36l-5 4" stroke="#1b0f1f" stroke-width="3.2" stroke-linecap="round"/><path d="M28 46h8l-4 4z" fill="#1b0f1f"/></svg>`
+  };
+})();

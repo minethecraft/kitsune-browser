@@ -1,0 +1,90 @@
+{
+  "name": "kitsune-browser",
+  "productName": "Kitsune",
+  "version": "1.0.0",
+  "description": "Kitsune — a light, animated, anime-themed browser inspired by Opera and Firefox.",
+  "author": "Mr. Vibe",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron . --no-sandbox",
+    "start:lite": "KITSUNE_EDITION=lite electron . --no-sandbox",
+    "edition:full": "node scripts/set-edition.js full",
+    "edition:lite": "node scripts/set-edition.js lite",
+    "build": "node scripts/build.js"
+  },
+  "devDependencies": {
+    "electron": "latest",
+    "electron-builder": "latest",
+    "sharp": "latest"
+  },
+  "build": {
+    "appId": "app.kitsune.browser",
+    "productName": "Kitsune",
+    "copyright": "Kitsune Browser",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "data/**/*",
+      "edition.json",
+      "package.json",
+      "build/icon.png"
+    ],
+    "asar": true,
+    "compression": "normal",
+    "electronLanguages": [
+      "en-US"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "public.app-category.productivity",
+      "identity": null
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "build/icon.png",
+      "category": "Network"
+    },
+    "protocols": [
+      {
+        "name": "Web link",
+        "schemes": [
+          "http",
+          "https"
+        ]
+      }
+    ]
+  }
+}
