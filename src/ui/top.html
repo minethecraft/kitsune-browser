@@ -8,7 +8,7 @@
 </head>
 <body>
 <div id="chrome">
-  <div id="fx" class="fx-loop" aria-hidden="true"></div>
+  <canvas id="fx" aria-hidden="true"></canvas>
   <div id="tabstrip">
     <div class="padL"></div>
     <div id="privpill" hidden>Private</div>
@@ -16,6 +16,11 @@
     <button id="newtab" class="ib" title="New tab"></button>
     <div class="grow"></div>
     <div class="padR"></div>
+    <div id="wc" hidden>
+      <button id="wc-min" title="Minimize" aria-label="Minimize"></button>
+      <button id="wc-max" title="Maximize" aria-label="Maximize"></button>
+      <button id="wc-x" class="close" title="Close" aria-label="Close"></button>
+    </div>
   </div>
   <div id="toolbar">
     <div class="grp">
@@ -24,10 +29,10 @@
       <button id="reload" class="ib" title="Reload"></button>
     </div>
     <div id="omni">
-      <button id="site" class="ib sm" tabindex="-1"></button>
+      <button id="site" class="ib sm" tabindex="-1" draggable="true" title="Site information. Drag me to share or bookmark this page."></button>
       <div id="urlview"></div>
       <input id="omni-in" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="Search or enter address  (type &gt; for commands)">
-      <button id="star" class="ib sm" title="Bookmark this page"></button>
+      <button id="star" class="ib sm" title="Bookmark this page" draggable="true"></button>
     </div>
     <div class="grp">
       <button id="b-update" class="ib" title="Update available" hidden><b class="badge"></b></button>
@@ -60,12 +65,16 @@
   <div id="suggest" class="panel" hidden></div>
   <div id="menu" class="panel" hidden></div>
   <div id="shieldp" class="panel" hidden></div>
+  <div id="sitep" class="panel" hidden></div>
   <div id="dlp" class="panel" hidden></div>
   <div id="morep" class="panel" hidden></div>
+  <div id="ctxm" class="panel" hidden></div>
+  <div id="editp" class="panel" hidden></div>
   <div id="toast" hidden></div>
 </div>
 <script src="kitsune://assets/icons.js"></script>
 <script src="kitsune://assets/sfx.js"></script><script src="kitsune://assets/common.js"></script>
+<script src="kitsune://assets/particles.js"></script>
 <script src="top.js"></script>
 </body>
 </html>

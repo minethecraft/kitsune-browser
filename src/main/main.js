@@ -76,7 +76,18 @@ app.whenReady().then(async () => {
   reg('tab.activate', (w, e, id) => B.activateTab(w, id), true);
   reg('tab.close', (w, e, id) => B.closeTab(w, id), true);
   reg('tab.move', (w, e, id, before) => B.moveTab(w, id, before), true);
-  reg('tab.menu', (w, e, id) => B.tabContextMenu(w, id), true);
+  reg('tab.menu', (w, e, id, x, y) => B.tabContextMenu(w, id, x, y), true);
+  reg('tab.newAt', (w, e, url, beforeId) => { if (/^(https?|file):/i.test(String(url))) B.createTab(w, { url, beforeId: beforeId || undefined }); return 0; }, true);
+  reg('ctx.run', (w, e, id) => { B.runMenu(w, String(id)); }, true);
+  reg('ctx.close', (w) => { w.ctx = null; }, true);
+  reg('win.min', w => { w.base.minimize(); }, true);
+  reg('win.max', w => { w.base.isMaximized() ? w.base.unmaximize() : w.base.maximize(); }, true);
+  reg('win.close', w => { w.base.close(); }, true);
+  reg('clip.read', () => require('electron').clipboard.readText().slice(0, 4000), true);
+  reg('clip.write', (w, e, t) => { require('electron').clipboard.writeText(String(t || '').slice(0, 4000)); }, true);
+  reg('site.info', w => B.siteInfo(w), true);
+  reg('site.setPerm', (w, e, origin, key, val) => { B.setSitePerm(String(origin), String(key), String(val)); }, true);
+  reg('site.clear', w => B.clearSite(w), true);
   reg('nav', (w, e, input) => { B.navigate(w, input); }, true);
   reg('omni.suggest', (w, e, text) => B.suggest(w, text), true);
   reg('ui.sideOpen', (w, e, on) => B.setSideOpen(w, on), true);
@@ -141,6 +152,7 @@ app.whenReady().then(async () => {
   reg('dl.list', () => downloads.list());
   reg('dl.open', (w, e, id) => downloads.open(id));
   reg('dl.show', (w, e, id) => downloads.show(id));
+  reg('dl.drag', (w, e, id) => downloads.drag(id, e.sender), true);
   reg('dl.cancel', (w, e, id) => downloads.cancel(id));
   reg('dl.pause', (w, e, id) => downloads.pause(id));
   reg('dl.remove', (w, e, id) => { downloads.remove(id); B.broadcastDownloads(); });
@@ -212,7 +224,7 @@ app.whenReady().then(async () => {
 
   // app / extensions / misc
   reg('app.info', () => ({
-    version: app.getVersion(), edition: S.EDITION, electron: process.versions.electron, chromium: process.versions.chrome, node: process.versions.node,
+    version: app.getVersion(), edition: S.EDITION, chromium: process.versions.chrome, node: process.versions.node,
     platform: process.platform + ' ' + process.arch, userData: app.getPath('userData'), stats: B.stats(), blocklist: require('./adblock').count, isDefault: app.isDefaultProtocolClient('https')
   }));
   reg('app.setDefault', () => { app.setAsDefaultProtocolClient('http'); app.setAsDefaultProtocolClient('https'); return app.isDefaultProtocolClient('https'); });
@@ -291,15 +303,17 @@ app.whenReady().then(async () => {
   } catch (_) {}
 
   B.startSleeper();
+  require('./telemetry').start();
 
   const st = S.session().data;
   const restore = !pendingUrls.length && S.get().restoreSession && st.tabs && st.tabs.length ? st : null;
-  if (!S.get().setupDone && !process.env.KITSUNE_SMOKE && !process.env.KITSUNE_SMOKE_AI && !restore && !process.env.KITSUNE_SMOKE_NEW && !process.env.KITSUNE_SMOKE_V11 && !process.env.KITSUNE_SMOKE_V12 && !process.env.KITSUNE_SMOKE_V13) pendingUrls = ['kitsune://setup/'].concat(pendingUrls);
+  if (!S.get().setupDone && !process.env.KITSUNE_SMOKE && !process.env.KITSUNE_SMOKE_AI && !restore && !process.env.KITSUNE_SMOKE_NEW && !process.env.KITSUNE_SMOKE_V11 && !process.env.KITSUNE_SMOKE_V12 && !process.env.KITSUNE_SMOKE_V13 && !process.env.KITSUNE_SMOKE_V14) pendingUrls = ['kitsune://setup/'].concat(pendingUrls);
   B.createWindow({ urls: pendingUrls, restore });
   pendingUrls = [];
   if (process.env.KITSUNE_SMOKE_NEW) require('./smoke-new')().catch(e => { console.error('smoke-new failed', e); app.exit(1); });
   if (process.env.KITSUNE_SMOKE_V11) require('./smoke-v11')().catch(e => { console.error('smoke-v11 failed', e); app.exit(1); });
   if (process.env.KITSUNE_SMOKE_V12) require('./smoke-v12')().catch(e => { console.error('smoke-v12 failed', e); app.exit(1); });
+  if (process.env.KITSUNE_SMOKE_V14) require('./smoke-v14')().catch(e => { console.error('smoke-v14 failed', e); app.exit(1); });
   if (process.env.KITSUNE_SMOKE_V13) require('./smoke-v13')().catch(e => { console.error('smoke-v13 failed', e); app.exit(1); });
   if (process.env.KITSUNE_SMOKE_AI) require('./smoke-ai')().catch(e => { console.error('smoke-ai failed', e); app.exit(1); });
   if (process.env.KITSUNE_SMOKE) require('./smoke')().catch(e => { console.error('smoke failed', e); app.quit(); });
@@ -307,6 +321,12 @@ app.whenReady().then(async () => {
   app.on('activate', () => { if (!B.wins.size) B.createWindow({}); });
 });
 
-app.on('before-quit', () => {
+let quitting = false;
+app.on('before-quit', e => {
   try { require('./browser').saveSession(); require('./storage').flushAll(); } catch (_) {}
+  if (quitting) return;
+  quitting = true;
+  // let the anonymous "closed" ping out (at most ~1s), then really quit
+  e.preventDefault();
+  Promise.resolve().then(() => require('./telemetry').stop()).catch(() => {}).then(() => app.quit());
 });

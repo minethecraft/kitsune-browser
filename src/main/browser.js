@@ -65,6 +65,10 @@ function layout(win) {
   const th = topH(win), sw = sideW(win);
   win.top.setBounds({ x: 0, y: 0, width: w, height: win.htmlFull ? 0 : Math.min(h, Math.max(th, win.expandH || 0)) });
   win.top.setVisible(!win.htmlFull);
+  // A transparent view makes Chromium fall back to greyscale text (blurry). Keep it opaque while it only covers the toolbar,
+  // and transparent only while it is expanded over the page to host menus.
+  const wantBg = win.expandH > th ? '#00000000' : S.themeMeta(S.get().theme, S.get().customThemes).bg;
+  if (win.topBg !== wantBg) { win.topBg = wantBg; try { win.top.setBackgroundColor(wantBg); } catch (_) {} }
   if (win.side) { win.side.setBounds({ x: 0, y: th, width: sw ? (win.sideOpen ? SIDE_OPEN_W : sw) : 0, height: Math.max(h - th, 0) }); win.side.setVisible(sw > 0); }
   const aw = aiW(win);
   if (win.ai) { win.ai.setBounds({ x: Math.max(w - aw, 0), y: th, width: aw, height: Math.max(h - th, 0) }); win.ai.setVisible(aw > 0); }
@@ -156,7 +160,7 @@ function resolveInput(text) {
 // ---------------------------------------------------------------- tabs
 const hooks = {
   blocked(wcId) { const t = tabByWc.get(wcId); if (t) { t.blocked++; emit(t.win); } },
-  download(item) { downloads.handle(item, final => { broadcastDownloads(final); }); }
+  download(item, wc) { downloads.handle(item, final => { broadcastDownloads(final); }, wc); }
 };
 function broadcastDownloads() {
   broadcast('downloads', downloads.list());
@@ -239,9 +243,11 @@ function loadError(tab, desc, url) {
 function createTab(win, o = {}) {
   const s = S.get();
   const container = S.FEAT.containers ? (o.container || (win.workspace !== 'all' ? win.workspace : 'default')) : 'default';
+  if (!o.restoring) { try { require('./telemetry').countTab(); } catch (_) {} }
   const tab = { id: ++tabSeq, win, url: o.url || s.homepage, title: '', favicon: '', loading: false, audible: false, muted: false, pinned: !!o.pinned, sleeping: false, container, lastActive: Date.now(), blocked: 0, canBack: false, canFwd: false, view: null, secure: false };
   let idx = o.afterId ? win.tabs.findIndex(t => t.id === o.afterId) + 1 : win.tabs.length;
-  if (idx <= 0) idx = win.tabs.length;
+  if (o.beforeId) { const j = win.tabs.findIndex(t => t.id === o.beforeId); if (j >= 0) idx = j; }
+  if (idx <= 0 && !(o.beforeId && win.tabs.length && win.tabs[0].id === o.beforeId)) idx = win.tabs.length;
   const pinnedCount = win.tabs.filter(t => t.pinned).length;
   if (tab.pinned) idx = Math.min(idx, pinnedCount); else idx = Math.max(idx, pinnedCount);
   win.tabs.splice(idx, 0, tab);
@@ -330,11 +336,12 @@ function createWindow(o = {}) {
   const offset = (wins.size % 8) * 28;
   const prev = focusedWin();
   if (prev && !prev.base.isDestroyed()) { const b = prev.base.getBounds(); opts.x = b.x + offset; opts.y = b.y + offset; opts.width = b.width; opts.height = b.height; }
+  // macOS keeps its native traffic lights; Windows/Linux get a frameless window with Kitsune's own minimize / maximize / close buttons.
   if (MAC) { opts.titleBarStyle = 'hidden'; opts.trafficLightPosition = { x: 14, y: 12 }; }
-  else if (WIN) { opts.titleBarStyle = 'hidden'; opts.titleBarOverlay = { color: meta.bg, symbolColor: meta.fg, height: TAB_H }; }
+  else { opts.frame = false; opts.thickFrame = true; }
   const base = new BaseWindow(opts);
   const view = () => new WebContentsView({ webPreferences: { preload: PRELOAD, contextIsolation: true, sandbox: true, nodeIntegration: false, autoplayPolicy: 'no-user-gesture-required' } });
-  const top = view(); top.setBackgroundColor('#00000000');
+  const top = view(); top.setBackgroundColor(meta.bg);
   const side = S.FEAT.sidebar ? view() : null; if (side) side.setBackgroundColor('#00000000');
   const ai = S.FEAT.assistant ? view() : null; if (ai) ai.setBackgroundColor('#00000000');
   const win = { id, base, top, side, ai, aiOpen: !!(S.FEAT.assistant && S.get().aiOpen && !o.private), tabs: [], activeId: null, splitId: null, private: !!o.private, workspace: 'all', findOpen: false, expandH: 0, htmlFull: false, emitT: null };
@@ -363,7 +370,7 @@ function createWindow(o = {}) {
   top.webContents.once('did-finish-load', () => {
     const urls = o.urls && o.urls.length ? o.urls : null;
     if (o.restore && o.restore.tabs && o.restore.tabs.length) {
-      o.restore.tabs.forEach((t, i) => createTab(win, { url: t.url, container: t.container, pinned: t.pinned, background: true, sleeping: i !== o.restore.active, title: t.title }));
+      o.restore.tabs.forEach((t, i) => createTab(win, { url: t.url, container: t.container, pinned: t.pinned, background: true, sleeping: i !== o.restore.active, title: t.title, restoring: true }));
       const act = win.tabs[Math.min(o.restore.active || 0, win.tabs.length - 1)];
       if (act) activateTab(win, act.id);
     } else if (urls) urls.forEach(u => createTab(win, { url: u }));
@@ -375,7 +382,7 @@ function createWindow(o = {}) {
 function applyThemeChrome() {
   const meta = S.themeMeta(S.get().theme, S.get().customThemes);
   for (const w of wins.values()) {
-    try { w.base.setBackgroundColor(meta.bg); if (WIN) w.base.setTitleBarOverlay({ color: meta.bg, symbolColor: meta.fg, height: TAB_H }); } catch (_) {}
+    try { w.base.setBackgroundColor(meta.bg); w.topBg = null; layout(w); } catch (_) {}
   }
   nativeTheme.themeSource = S.get().pageTheme === 'dark' ? 'dark' : S.get().pageTheme === 'light' ? 'light' : 'system';
 }
@@ -437,7 +444,7 @@ const PALETTE = [
   ['bookmark', 'Bookmark this page'], ['find', 'Find in page'], ['print', 'Print'], ['pdf', 'Save page as PDF'], ['devtools', 'Developer tools'],
   ['viewSource', 'View page source'], ['fullscreen', 'Toggle full screen'], ['sleepOthers', 'Sleep other tabs (free memory)'], ['closeOthers', 'Close other tabs'],
   ['nextTheme', 'Next theme'], ['toggleSidebar', 'Toggle sidebar'], ['kirokuOpen', 'Open Kiroku'], ['kirokuTrack', 'Pause / resume Kiroku tracking'], ['zoomReset', 'Reset zoom'],
-  ['page:anime', 'Open Anime Hub'], ['page:bookmarks', 'Open bookmarks'], ['page:history', 'Open history'], ['page:downloads', 'Open downloads'], ['page:settings', 'Open settings']
+  ['page:anime', 'Open Anime Hub'], ['page:bookmarks', 'Open bookmarks'], ['page:history', 'Open history'], ['page:downloads', 'Open downloads'], ['page:extensions', 'Browse extensions'], ['page:settings', 'Open settings']
 ];
 
 function openPage(win, name) {
@@ -602,7 +609,30 @@ async function suggest(win, text) {
   return trimmed.slice(0, 11);
 }
 
-// ---------------------------------------------------------------- native menus
+// ---------------------------------------------------------------- custom context menus (drawn by the chrome view, not the OS)
+/** template: Electron-style menu items; they are turned into plain data for top.js, and the click handlers stay here. */
+function showMenu(win, template, x, y, wc) {
+  const roles = { undo: ['Undo', 'Z'], redo: ['Redo', 'Shift+Z'], cut: ['Cut', 'X'], copy: ['Copy', 'C'], paste: ['Paste', 'V'], selectAll: ['Select All', 'A'] };
+  const mod = MAC ? '⌘' : 'Ctrl+';
+  const handlers = new Map(); const items = [];
+  const add = (it, prefix) => {
+    if (it.type === 'separator') { if (items.length && items[items.length - 1].type !== 'sep') items.push({ type: 'sep' }); return; }
+    if (it.submenu) { items.push({ type: 'sep' }, { type: 'hd', label: it.label }); it.submenu.forEach(s => add(s)); items.push({ type: 'sep' }); return; }
+    let label = it.label, kbd = it.kbd || '', click = it.click;
+    if (it.role && roles[it.role]) { label = roles[it.role][0]; kbd = mod + roles[it.role][1]; click = () => { try { wc[it.role](); } catch (_) {} }; }
+    const id = 'm' + items.length; handlers.set(id, click);
+    items.push({ id, label, kbd, enabled: it.enabled !== false, danger: !!it.danger, checked: !!it.checked });
+  };
+  template.forEach(it => add(it));
+  while (items.length && items[items.length - 1].type === 'sep') items.pop();
+  win.ctx = handlers;
+  send(win.top, 'ctxmenu', { items, x: Math.round(x), y: Math.round(y) });
+}
+function runMenu(win, id) {
+  const fn = win.ctx && win.ctx.get(id); win.ctx = null;
+  if (typeof fn === 'function') { try { fn(); } catch (_) {} }
+}
+
 function pageContextMenu(win, tab, p) {
   const wc = tab.view.webContents; const T = [];
   const open = (url, bg, priv) => priv ? createWindow({ private: true, urls: [url] }) : createTab(win, { url, background: bg, container: tab.container, afterId: tab.id });
@@ -612,7 +642,9 @@ function pageContextMenu(win, tab, p) {
   }
   if (p.linkURL) {
     T.push({ label: 'Open Link in New Tab', click: () => open(p.linkURL, false) }, { label: 'Open Link in Background Tab', click: () => open(p.linkURL, true) },
-      { label: 'Open Link in Private Window', click: () => open(p.linkURL, false, true) }, { label: 'Copy Link Address', click: () => clipboard.writeText(p.linkURL) }, { type: 'separator' });
+      { label: 'Open Link in Private Window', click: () => open(p.linkURL, false, true) }, { label: 'Copy Link Address', click: () => clipboard.writeText(p.linkURL) },
+      { label: 'Bookmark Link', click: () => { const st = S.bookmarks(); if (!st.data.items.some(b => b.url === p.linkURL)) { st.data.items.push({ id: 'b' + Date.now().toString(36), title: (p.linkText || p.linkURL).slice(0, 120), url: p.linkURL, added: Date.now(), bar: true }); st.save(); broadcast('bookmarks'); } toast(win, 'Bookmarked ★', 'ok'); } },
+      { label: 'Save Link As…', click: () => wc.downloadURL(p.linkURL) }, { type: 'separator' });
   }
   if (p.mediaType === 'image') {
     T.push({ label: 'Open Image in New Tab', click: () => open(p.srcURL, false) }, { label: 'Save Image As…', click: () => wc.downloadURL(p.srcURL) },
@@ -629,14 +661,15 @@ function pageContextMenu(win, tab, p) {
     T.push({ role: 'copy' }, { label: `Search for “${sel.length > 28 ? sel.slice(0, 28) + '…' : sel}”`, click: () => open(resolveInput(sel), false) }, { type: 'separator' });
   }
   if (!p.linkURL && !p.selectionText && !p.isEditable && p.mediaType === 'none') {
-    T.push({ label: 'Back', enabled: nav(wc).canGoBack(), click: () => nav(wc).goBack() }, { label: 'Forward', enabled: nav(wc).canGoForward(), click: () => nav(wc).goForward() }, { label: 'Reload', click: () => wc.reload() }, { type: 'separator' },
-      { label: 'Bookmark Page', click: () => toggleBookmark(win) }, { label: 'Reader View', click: () => cmd(win, 'reader') }, { label: 'Take Screenshot', click: () => cmd(win, 'screenshot') }, { label: 'Print…', click: () => cmd(win, 'print') }, { type: 'separator' });
+    T.push({ label: 'Back', enabled: nav(wc).canGoBack(), kbd: MAC ? '⌘[' : 'Alt+←', click: () => nav(wc).goBack() }, { label: 'Forward', enabled: nav(wc).canGoForward(), kbd: MAC ? '⌘]' : 'Alt+→', click: () => nav(wc).goForward() }, { label: 'Reload', kbd: (MAC ? '⌘' : 'Ctrl+') + 'R', click: () => wc.reload() }, { type: 'separator' },
+      { label: 'Bookmark Page', kbd: (MAC ? '⌘' : 'Ctrl+') + 'D', click: () => toggleBookmark(win) }, { label: 'Reader View', kbd: 'F9', click: () => cmd(win, 'reader') }, { label: 'Take Screenshot', click: () => cmd(win, 'screenshot') }, { label: 'Print…', kbd: (MAC ? '⌘' : 'Ctrl+') + 'P', click: () => cmd(win, 'print') }, { type: 'separator' });
   }
   T.push({ label: 'View Page Source', enabled: /^https?:/.test(tab.url), click: () => cmd(win, 'viewSource') }, { label: 'Inspect Element', click: () => { wc.inspectElement(p.x, p.y); if (!wc.isDevToolsOpened()) wc.openDevTools({ mode: 'detach' }); } });
-  Menu.buildFromTemplate(T).popup({ window: win.base });
+  let b = { x: 0, y: 0 }; try { b = tab.view.getBounds(); } catch (_) {}
+  showMenu(win, T, b.x + p.x, b.y + p.y, wc);
 }
 
-function tabContextMenu(win, id) {
+function tabContextMenu(win, id, x, y) {
   const t = tabOf(win, id); if (!t) return;
   const T = [
     { label: 'New Tab', click: () => cmd(win, 'newTab') },
@@ -648,10 +681,37 @@ function tabContextMenu(win, id) {
   ];
   if (S.FEAT.split) T.push({ label: win.splitId === id ? 'Close Split View' : 'Open in Split View', enabled: id !== win.activeId, click: () => { if (win.splitId) win.splitId = null; cmd(win, 'split', win.splitId ? undefined : id); if (win.splitId === null) { win.splitId = null; } layout(win); emit(win); } });
   if (S.FEAT.containers && !win.private) {
-    T.push({ type: 'separator' }, { label: 'Move to Container', submenu: S.get().containers.map(c => ({ label: `${c.icon || ''} ${c.name}`, type: 'radio', checked: t.container === c.id, click: () => cmd(win, 'moveToContainer', { id, container: c.id }) })) });
+    T.push({ type: 'separator' }, { label: 'Move to Container', submenu: S.get().containers.map(c => ({ label: `${c.icon || ''} ${c.name}`, checked: t.container === c.id, click: () => cmd(win, 'moveToContainer', { id, container: c.id }) })) });
   }
   T.push({ type: 'separator' }, { label: 'Close Tab', click: () => closeTab(win, id) }, { label: 'Close Other Tabs', click: () => cmd(win, 'closeOthers', id) }, { label: 'Close Tabs to the Right', click: () => cmd(win, 'closeRight', id) }, { label: 'Reopen Closed Tab', enabled: closedTabs.length > 0, click: () => cmd(win, 'reopenTab') });
-  Menu.buildFromTemplate(T).popup({ window: win.base });
+  showMenu(win, T, x == null ? 80 : x, y == null ? TAB_H : y);
+}
+
+// ---------------------------------------------------------------- site information (the lock menu)
+const SITE_PERMS = ['media', 'geolocation', 'notifications', 'clipboard-read', 'display-capture', 'midi'];
+async function siteInfo(win) {
+  const a = activeTab(win); if (!a) return null;
+  const url = a.url || ''; let u = null; try { u = new URL(url); } catch (_) {}
+  if (!u) return { url, host: url, origin: '', kind: 'internal', perms: [], cookies: 0, blocked: 0 };
+  const kind = u.protocol === 'https:' ? 'secure' : u.protocol === 'http:' ? 'insecure' : u.protocol === 'file:' ? 'file' : 'internal';
+  let cookies = 0;
+  if ((kind === 'secure' || kind === 'insecure') && a.view) { try { cookies = (await a.view.webContents.session.cookies.get({ url })).length; } catch (_) {} }
+  const perms = SITE_PERMS.map(key => { const v = S.get().sitePerms[u.origin + '|' + key]; return { key, state: v === true ? 'allow' : v === false ? 'block' : 'ask' }; });
+  return { url, host: u.host.replace(/^www\./, '') || url, origin: u.origin, kind, perms, cookies, blocked: a.blocked || 0 };
+}
+function setSitePerm(origin, key, value) {
+  if (!SITE_PERMS.includes(key) || !/^https?:\/\//.test(origin || '')) return;
+  const sp = Object.assign({}, S.get().sitePerms); const k = origin + '|' + key;
+  if (value === 'allow') sp[k] = true; else if (value === 'block') sp[k] = false; else delete sp[k];
+  S.patch({ sitePerms: sp });
+}
+async function clearSite(win) {
+  const a = activeTab(win); if (!a || !a.view) return false;
+  let origin; try { origin = new URL(a.url).origin; } catch (_) { return false; }
+  if (!/^https?:/.test(origin)) return false;
+  try { await a.view.webContents.session.clearStorageData({ origin }); } catch (_) {}
+  try { a.view.webContents.reload(); } catch (_) {}
+  return true;
 }
 
 // ---------------------------------------------------------------- housekeeping
@@ -665,7 +725,7 @@ function startSleeper() {
 
 module.exports = {
   toast, activeTab, tabOf, wake, wins, tabByWc, createWindow, createTab, focusedWin, winOfSender, cmd, navigate, suggest, emit, layout, relayoutAll, broadcast, broadcastDownloads,
-  activateTab, closeTab, moveTab, tabContextMenu, snapshot, applyThemeChrome, startSleeper, saveSession, clearHistory, toast, PALETTE,
+  activateTab, closeTab, moveTab, tabContextMenu, runMenu, siteInfo, setSitePerm, clearSite, snapshot, applyThemeChrome, startSleeper, saveSession, clearHistory, toast, PALETTE,
   setSideOpen(win, on) { on = !!on; if (win.sideOpen === on) return; win.sideOpen = on; if (on && win.side) { win.base.contentView.addChildView(win.side); win.base.contentView.addChildView(win.top); } layout(win); },
   setExpand(win, h) { win.expandH = h | 0; layout(win); },
   findText(win, text, opts = {}) { const a = activeTab(win); if (!a || !a.view) return; win.lastFind = text; if (!text) { a.view.webContents.stopFindInPage('clearSelection'); send(win.top, 'find-result', { active: 0, total: 0 }); return; } a.view.webContents.findInPage(text, { forward: opts.forward !== false, findNext: !!opts.next, matchCase: !!opts.matchCase }); },

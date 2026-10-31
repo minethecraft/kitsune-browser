@@ -12,7 +12,7 @@ function readEdition() {
 const EDITION = readEdition() === 'lite' ? 'lite' : 'full';
 const LITE = EDITION === 'lite';
 
-const ALL_THEMES = ['sakura', 'neon', 'umbra', 'aqua', 'crimson', 'dusk', 'hanami', 'rain'];
+const ALL_THEMES = ['sakura', 'neon', 'umbra', 'aqua', 'crimson', 'dusk', 'hanami', 'rain', 'aurora', 'matcha', 'kitsune', 'cosmos', 'mono'];
 const FEAT = LITE
   ? { assistant: false, sidebar: false, containers: false, split: false, extensions: false, particles: false, themes: ['sakura', 'umbra', 'hanami'] }
   : { assistant: false, sidebar: true, containers: true, split: true, extensions: true, particles: true, themes: ALL_THEMES };
@@ -21,7 +21,9 @@ const FEAT = LITE
 const THEME_META = {
   sakura: { bg: '#2b1830', fg: '#ffe3ef' }, neon: { bg: '#0e1027', fg: '#c9f9ff' }, umbra: { bg: '#0b0912', fg: '#e6dcff' },
   aqua: { bg: '#0c2233', fg: '#d6f3ff' }, crimson: { bg: '#1d0b10', fg: '#ffd9dd' }, dusk: { bg: '#1d1630', fg: '#ffe6d1' },
-  hanami: { bg: '#ffe3ee', fg: '#3a2540' }, rain: { bg: '#0b1418', fg: '#d3fff0' }
+  hanami: { bg: '#ffe3ee', fg: '#3a2540' }, rain: { bg: '#0b1418', fg: '#d3fff0' },
+  aurora: { bg: '#081a1f', fg: '#e2fff8' }, matcha: { bg: '#14201a', fg: '#e9f5e1' }, kitsune: { bg: '#1f1008', fg: '#fff0e0' },
+  cosmos: { bg: '#070718', fg: '#e8e9ff' }, mono: { bg: '#121212', fg: '#f2f2f2' }
 };
 
 const themeMeta = (name, list) => {
@@ -112,7 +114,15 @@ const DEFAULTS = {
   sfx: { pack: 'off', volume: 0.5, hover: false, custom: {} },
   communityServer: '',
   vaultAutoLock: 15,
-  vaultOffer: true
+  vaultOffer: true,
+  dialItems: [],                  // new-tab shortcuts you edited: [{title,url}]
+  dialInit: false,                // set once the starting shortcuts were copied into dialItems
+  dialHidden: [],                 // hosts hidden from the auto-filled most-visited shortcuts
+  dialAuto: true,                 // keep adding most-visited sites after your own shortcuts
+  hideMode: 'keep',               // what "hide interface" on the new tab leaves behind: keep (buttons only) | clock | search | none
+  fastDownloads: true,            // fetch big files over several connections at once
+  telemetry: true,                // anonymous usage counts for the download site's stats (no URLs, no page content)
+  clientId: ''                    // random id for those counts, created on first launch
 };
 
 const storage = require('./storage');

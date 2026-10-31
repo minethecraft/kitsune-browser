@@ -7,7 +7,7 @@ const { net } = require('electron');
 const { pathToFileURL } = require('url');
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.woff2': 'font/woff2', '.ico': 'image/x-icon' };
-const PAGES = new Set(['newtab', 'settings', 'history', 'bookmarks', 'downloads', 'anime', 'about', 'error', 'setup', 'updates', 'backgrounds', 'studio', 'passwords', 'community']);
+const PAGES = new Set(['newtab', 'settings', 'history', 'bookmarks', 'downloads', 'anime', 'about', 'error', 'setup', 'updates', 'backgrounds', 'studio', 'passwords', 'community', 'extensions']);
 
 const MEDIA = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp', '.avif': 'image/avif', '.mp4': 'video/mp4', '.m4v': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime', '.wav': 'audio/wav', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg' };
 /** Serve a profile file with HTTP Range support (needed for <video> seeking / looping). */

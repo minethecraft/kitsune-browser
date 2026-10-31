@@ -49,7 +49,7 @@ html[data-tabs="square"] .mock .t { border-radius: 0; } html[data-tabs="pill"] .
 <script>
 const $ = s => document.querySelector(s), call = (n, ...a) => kitsune.call(n, ...a);
 const toast = t => { const e = $('#toast'); e.textContent = t; e.className = 'on'; clearTimeout(toast.t); toast.t = setTimeout(() => e.className = '', 2600); };
-const BASE = { sakura: ['#2b1830', '#ff8fb8', '#ffc86b'], neon: ['#0e1027', '#3df0ff', '#ff3df0'], umbra: ['#0b0912', '#a77bff', '#5b8cff'], aqua: ['#0c2233', '#4fd1ff', '#7af5c8'], crimson: ['#1d0b10', '#ff4d5e', '#ffb84d'], dusk: ['#1d1630', '#ff9d4d', '#ff6fa5'], hanami: ['#ffeff5', '#ff6fa5', '#ffa94d'], rain: ['#0b1418', '#6cf5c2', '#57b9ff'] };
+const BASE = { sakura: ['#2b1830', '#ff8fb8', '#ffc86b'], neon: ['#0e1027', '#3df0ff', '#ff3df0'], umbra: ['#0b0912', '#a77bff', '#5b8cff'], aqua: ['#0c2233', '#4fd1ff', '#7af5c8'], crimson: ['#1d0b10', '#ff4d5e', '#ffb84d'], dusk: ['#1d1630', '#ff9d4d', '#ff6fa5'], hanami: ['#ffeff5', '#ff6fa5', '#ffa94d'], rain: ['#0b1418', '#6cf5c2', '#57b9ff'], aurora: ['#081a1f', '#5cffc4', '#9b6bff'], matcha: ['#14201a', '#a8e063', '#f2d479'], kitsune: ['#1f1008', '#ff7a1a', '#ffc14d'], cosmos: ['#070718', '#7aa2ff', '#ff7ad9'], mono: ['#121212', '#e8e8e8', '#8c8c8c'] };
 const mixh = (a, b, t) => { const x = parseInt(a.slice(1), 16), y = parseInt(b.slice(1), 16); const c = s => Math.round(((x >> s) & 255) * (1 - t) + ((y >> s) & 255) * t); return '#' + [16, 8, 0].map(s => c(s).toString(16).padStart(2, '0')).join(''); };
 const dark = h => { const n = parseInt(h.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255 < .5; };
 function fromPreset(bg, ac, ac2) { const d = dark(bg); const fg = d ? '#f6eefc' : '#2a1633'; return { bg, bg2: mixh(bg, d ? '#ffffff' : '#000000', .07), bg3: mixh(bg, d ? '#ffffff' : '#000000', .14), fg, muted: mixh(fg, bg, .4), accent: ac, accent2: ac2 }; }
@@ -72,7 +72,7 @@ function draw() {
   bgOpts();
   $('#radius').value = u.radius; $('#vr').textContent = u.radius; $('#blur').value = u.blur; $('#vb').textContent = u.blur;
   segHtml('density', [['compact', 'Compact'], ['normal', 'Normal'], ['roomy', 'Roomy']], u.density); segHtml('font', [['system', 'System'], ['rounded', 'Rounded'], ['serif', 'Serif'], ['mono', 'Mono']], u.font); segHtml('tabs', [['round', 'Rounded'], ['square', 'Square'], ['pill', 'Pill']], u.tabs);
-  $('#particles').innerHTML = [['sakura', 'Sakura petals'], ['ember', 'Embers'], ['snow', 'Snow'], ['rain', 'Neon rain'], ['firefly', 'Fireflies'], ['none', 'None']].map(([v, l]) => `<option value="${v}" ${T.particles === v ? 'selected' : ''}>${l}</option>`).join('');
+  $('#particles').innerHTML = [['sakura', 'Sakura petals'], ['leaves', 'Falling leaves'], ['ember', 'Embers'], ['lantern', 'Floating lanterns'], ['snow', 'Snow'], ['rain', 'Rain with ripples'], ['firefly', 'Fireflies'], ['stars', 'Starfield + shooting stars'], ['bubbles', 'Bubbles'], ['aurora', 'Aurora glow'], ['none', 'None']].map(([v, l]) => `<option value="${v}" ${T.particles === v ? 'selected' : ''}>${l}</option>`).join('');
   $('#pack').innerHTML = SFX.PACKS.map(([v, l]) => `<option value="${v}" ${T.sfx.pack === v ? 'selected' : ''}>${l}</option>`).join('');
   $('#vol').value = Math.round(T.sfx.volume * 100); $('#vv').textContent = Math.round(T.sfx.volume * 100); $('#hover').classList.toggle('on', !!T.sfx.hover);
   const cu = (S.sfx && S.sfx.custom) || {};

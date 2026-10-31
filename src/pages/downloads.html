@@ -10,13 +10,16 @@
 <script>
 const $ = s => document.querySelector(s), call = (n, ...a) => kitsune.call(n, ...a);
 let items = [];
+const eta = x => x == null ? '' : x < 5 ? 'a few seconds left' : x < 60 ? x + 's left' : x < 3600 ? Math.ceil(x / 60) + ' min left' : Math.floor(x / 3600) + ' h ' + Math.ceil((x % 3600) / 60) + ' min left';
 function render() {
   $('#empty').hidden = items.length > 0;
-  $('#list').innerHTML = items.map(d => { const pct = d.total ? Math.round(100 * d.received / d.total) : 0;
-    const st = d.state === 'progressing' ? `${K.bytes(d.received)} of ${K.bytes(d.total) || '?'}${d.paused ? ' · paused' : ''}` : d.state === 'completed' ? K.bytes(d.total || d.received) + ' · ' + K.ago(d.started) : d.state === 'cancelled' ? 'Cancelled' : 'Failed';
-    return `<div class="row card" style="margin-bottom:8px" data-id="${d.id}"><div class="grow"><div class="t">${K.esc(d.name)}</div>${d.state === 'progressing' ? `<div class="pb"><i style="width:${pct}%"></i></div>` : ''}<div class="d">${st}</div><div class="d" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.7">${K.esc(d.url)}</div></div>
-    ${d.state === 'completed' ? '<button class="btn" data-a="open">Open</button><button class="btn" data-a="show">Show in folder</button>' : d.state === 'progressing' ? '<button class="btn" data-a="pause">Pause</button><button class="btn danger" data-a="cancel">Cancel</button>' : ''}<button class="x" data-a="remove" title="Remove from list">✕</button></div>`; }).join('');
-  $('#list').querySelectorAll('[data-a]').forEach(b => b.onclick = () => call('dl.' + b.dataset.a, +b.closest('.row').dataset.id));
+  $('#list').innerHTML = items.map(d => { const pct = d.total ? Math.round(100 * d.received / d.total) : 0; const ok = d.state === 'completed' && !d.missing;
+    const live = d.state === 'progressing' && !d.paused ? [d.speed ? K.bytes(d.speed) + '/s' : '', eta(d.eta), d.conns > 1 ? d.conns + ' connections' : ''].filter(Boolean).join(' · ') : '';
+    const st = d.state === 'progressing' ? `${K.bytes(d.received)} of ${K.bytes(d.total) || '?'}${d.paused ? ' · paused' : ''}${live ? ' · ' + live : ''}` : d.state === 'completed' ? (d.missing ? 'File moved or deleted' : K.bytes(d.total || d.received) + ' · ' + K.ago(d.started)) : d.state === 'cancelled' ? 'Cancelled' : 'Failed or interrupted';
+    return `<div class="row card" style="margin-bottom:8px" data-id="${d.id}"${ok ? ' draggable="true" title="Drag into a folder to copy it there"' : ''}><div class="grow"><div class="t">${K.esc(d.name)}</div>${d.state === 'progressing' ? `<div class="pb"><i style="width:${pct}%"></i></div>` : ''}<div class="d">${st}</div></div>
+    ${ok ? '<button class="btn" data-a="open">Open</button><button class="btn" data-a="show">Show in folder</button>' : d.state === 'progressing' ? `<button class="btn" data-a="pause">${d.paused ? 'Resume' : 'Pause'}</button><button class="btn danger" data-a="cancel">Cancel</button>` : ''}<button class="btn" data-a="remove" title="Remove from list">&#10005;</button></div>`; }).join('');
+  $('#list').querySelectorAll('[data-a]').forEach(b => b.onclick = e => { e.stopPropagation(); call('dl.' + b.dataset.a, +b.closest('.row').dataset.id); });
+  $('#list').querySelectorAll('.row[draggable]').forEach(r => r.addEventListener('dragstart', e => { e.preventDefault(); call('dl.drag', +r.dataset.id); }));
 }
 (async () => { const st = await K.init(); $('#logo').innerHTML = I.download; items = await call('dl.list'); render(); kitsune.on('downloads', d => { items = d; render(); });
   $('#clr').onclick = () => call('dl.clear'); $('#dir').onclick = async () => { const d = await call('dl.chooseDir'); $('#lead').textContent = 'Saving to ' + d; };

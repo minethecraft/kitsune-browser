@@ -17,7 +17,14 @@ html, body { overflow: hidden; background: var(--bg); }
 #scrim { position: fixed; inset: 0; box-shadow: inset 0 0 0 100vmax rgba(0,0,0,var(--bgdim,0)); background: linear-gradient(180deg, rgba(0,0,0,.28), rgba(0,0,0,.05) 35%, rgba(0,0,0,.5)), radial-gradient(1200px 700px at 50% 45%, transparent 35%, var(--scrim)); pointer-events: none; }
 canvas#fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 #ui { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; padding-top: 11vh; transition: opacity .5s, transform .5s; }
-body.hideui #ui, body.hideui #now, body.hideui #ctl { opacity: 0; pointer-events: none; transform: translateY(8px); }
+body.hideui #ui, body.hideui #now { opacity: 0; pointer-events: none; transform: translateY(8px); }
+/* hide-interface modes: the buttons bottom-right stay put (except in "nothing" mode, where they fade in when you point at the corner) */
+#ui > * { transition: opacity .4s, transform .4s; }
+body.hideui[data-hm="clock"] #ui, body.hideui[data-hm="search"] #ui { opacity: 1; transform: none; }
+body.hideui[data-hm="clock"] #ui > :not(#clock):not(#date), body.hideui[data-hm="search"] #ui > :not(form#sf) { opacity: 0; pointer-events: none; transform: translateY(8px); }
+body.hideui[data-hm="clock"] #now, body.hideui[data-hm="search"] #now { opacity: 1; transform: none; pointer-events: auto; }
+body.hideui[data-hm="none"] #ctl { opacity: 0; } body.hideui[data-hm="none"] #ctl:hover, body.hideui[data-hm="none"] #ctl:focus-within { opacity: 1; }
+#ctl { z-index: 5; }
 #clock { font-size: clamp(56px, 9vw, 112px); font-weight: 200; letter-spacing: -.02em; line-height: 1; text-shadow: 0 4px 40px rgba(0,0,0,.45); color: #fff; animation: rise .8s cubic-bezier(.2,.8,.3,1) both; }
 #date { margin-top: 8px; color: rgba(255,255,255,.86); font-size: 16px; text-shadow: 0 2px 14px rgba(0,0,0,.5); letter-spacing: .04em; animation: rise .8s .08s cubic-bezier(.2,.8,.3,1) both; }
 @keyframes rise { from { opacity: 0; transform: translateY(16px); } }
@@ -31,6 +38,21 @@ form#sf:focus-within { border-color: var(--accent); box-shadow: 0 18px 60px rgba
 .tile .ic { width: 58px; height: 58px; border-radius: 18px; background: rgba(20,14,28,.42); border: 1px solid rgba(255,255,255,.2); backdrop-filter: blur(14px); display: grid; place-items: center; transition: transform .25s cubic-bezier(.2,.9,.3,1.5), box-shadow .25s, border-color .25s; }
 .tile:hover .ic { transform: translateY(-6px) scale(1.08) rotate(-2deg); box-shadow: 0 16px 30px rgba(0,0,0,.4), 0 0 0 3px var(--glow); border-color: var(--accent); }
 .tile .ic img { width: 28px; height: 28px; border-radius: 7px; } .tile .ic b { font-size: 22px; }
+.tw { position: relative; width: 88px; } .tw .tile { width: 88px; }
+.tw .mo { position: absolute; top: -4px; right: 2px; width: 24px; height: 24px; border-radius: 50%; border: 1px solid rgba(255,255,255,.3); background: rgba(18,12,26,.78); color: #fff; font-size: 14px; line-height: 1; cursor: pointer; opacity: 0; transform: scale(.7); transition: opacity .2s, transform .2s, background .2s; display: grid; place-items: center; padding: 0; }
+.tw:hover .mo, .tw .mo:focus-visible { opacity: 1; transform: none; } .tw .mo:hover { background: var(--accent); color: var(--accent-fg); }
+.tile.add { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; } .tile.add .ic { border-style: dashed; border-color: rgba(255,255,255,.45); } .tile.add .ic b { font-size: 34px; font-weight: 300; line-height: 1; }
+.tile.add:hover .ic { transform: translateY(-6px) scale(1.08) rotate(90deg); }
+#hmenu { position: fixed; z-index: 20; right: 20px; bottom: 70px; min-width: 210px; padding: 6px; border-radius: 14px; background: rgba(22,16,32,.94); border: 1px solid rgba(255,255,255,.18); box-shadow: 0 18px 48px rgba(0,0,0,.5); backdrop-filter: blur(16px); } #hmenu[hidden], #tmenu[hidden] { display: none; }
+#hmenu button { display: flex; width: 100%; gap: 10px; align-items: center; padding: 9px 12px; border: 0; border-radius: 9px; background: none; color: #fff; font: inherit; font-size: 13.5px; cursor: pointer; text-align: left; } #hmenu button:hover { background: rgba(255,255,255,.12); } #hmenu button.cur { color: var(--accent); font-weight: 700; } #hmenu small { display: block; padding: 6px 12px 4px; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.55); }
+#tmenu { position: fixed; z-index: 20; min-width: 190px; padding: 6px; border-radius: 14px; background: rgba(22,16,32,.94); border: 1px solid rgba(255,255,255,.18); box-shadow: 0 18px 48px rgba(0,0,0,.5); backdrop-filter: blur(16px); animation: rise .18s both; }
+#tmenu button { display: flex; width: 100%; gap: 10px; align-items: center; text-align: left; padding: 9px 12px; border: 0; border-radius: 9px; background: none; color: #fff; font: inherit; font-size: 13.5px; cursor: pointer; } #tmenu button:hover { background: var(--accent); color: var(--accent-fg); } #tmenu .sp { height: 1px; background: rgba(255,255,255,.14); margin: 4px 6px; } #tmenu .dg { color: #ff8a8a; }
+#dlg { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: rgba(0,0,0,.45); backdrop-filter: blur(4px); } #dlg[hidden] { display: none; }
+#dlg .box { width: min(400px, 90vw); padding: 22px; border-radius: 20px; background: rgba(24,17,34,.96); border: 1px solid rgba(255,255,255,.2); box-shadow: 0 30px 80px rgba(0,0,0,.6); color: #fff; animation: rise .25s both; }
+#dlg h3 { margin: 0 0 14px; font-size: 17px; } #dlg label { display: block; font-size: 12px; color: rgba(255,255,255,.7); margin: 10px 0 5px; }
+#dlg input[type=text] { width: 100%; box-sizing: border-box; padding: 11px 13px; border-radius: 11px; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.08); color: #fff; font-size: 14px; outline: 0; } #dlg input[type=text]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--glow); }
+#dlg .btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; } #dlg .btns button { padding: 9px 18px; border-radius: 999px; border: 1px solid rgba(255,255,255,.25); background: none; color: #fff; font: inherit; font-size: 13.5px; cursor: pointer; } #dlg .btns .pri { background: var(--accent); color: var(--accent-fg); border-color: transparent; font-weight: 700; }
+#dlg .opt { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 13px; color: rgba(255,255,255,.85); } #dlg .opt a { color: var(--accent); cursor: pointer; margin-left: auto; }
 .tile span { font-size: 12px; text-shadow: 0 1px 8px rgba(0,0,0,.7); max-width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #watching { margin-top: 30px; width: min(820px, 92vw); }
 #watching h3 { margin: 0 0 10px 6px; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.8); text-shadow: 0 1px 8px rgba(0,0,0,.6); }
@@ -46,6 +68,7 @@ form#sf:focus-within { border-color: var(--accent); box-shadow: 0 18px 60px rgba
 #now .st { padding: 1px 9px; border-radius: 999px; background: var(--accent); color: var(--accent-fg); font-weight: 700; font-size: 11px; }
 #now a.go { margin-left: auto; padding: 5px 12px; border-radius: 999px; background: rgba(255,255,255,.14); color: #fff; font-size: 12px; font-weight: 600; text-decoration: none; transition: background .2s, transform .2s; } #now a.go:hover { background: var(--accent); color: var(--accent-fg); transform: translateY(-1px); }
 #ctl { position: fixed; right: 20px; bottom: 20px; display: flex; gap: 6px; transition: opacity .5s; }
+#ctl button.on { background: var(--accent); color: var(--accent-fg); }
 #ctl button { width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(255,255,255,.22); background: rgba(18,12,26,.5); color: #fff; backdrop-filter: blur(14px); cursor: pointer; display: grid; place-items: center; transition: background .2s, transform .2s; } #ctl button:hover { background: var(--accent); color: var(--accent-fg); transform: translateY(-2px); }
 #priv { position: fixed; top: 18px; right: 22px; padding: 10px 16px; border-radius: 14px; background: linear-gradient(90deg,#7b4dff,#c04dff); color: #fff; font-weight: 600; box-shadow: 0 0 30px rgba(150,80,255,.5); display: none; }
 body.private #priv { display: block; }
@@ -65,7 +88,10 @@ body.private #priv { display: block; }
   <div id="watching" hidden><h3>Currently watching</h3><div id="wrow"></div></div>
 </div>
 <div id="now" hidden></div>
-<div id="ctl"><button id="prev" title="Previous background (&larr;)"></button><button id="next" title="Next background (&rarr;)"></button><button id="hide" title="Hide interface (H)"></button><button id="bgs" title="Backgrounds & themes"></button></div>
+<div id="tmenu" hidden></div>
+<div id="dlg" hidden></div>
+<div id="hmenu" hidden></div>
+<div id="ctl"><button id="prev" title="Previous background (&larr;)"></button><button id="next" title="Next background (&rarr;)"></button><button id="hide" title="Hide interface (H). Right-click for more ways."></button><button id="hmode" title="Ways to hide the interface"></button><button id="bgs" title="Backgrounds & themes"></button></div>
 <script src="kitsune://assets/icons.js"></script>
 <script src="kitsune://assets/sfx.js"></script><script src="kitsune://assets/common.js"></script>
 <script src="kitsune://assets/particles.js"></script>
@@ -80,12 +106,74 @@ function tick() {
   const g = h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
   $('#date').textContent = (S && S.displayName ? g + ', ' + S.displayName + ' · ' : '') + d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
 }
+const hostOf = u => { try { return new URL(u).host.replace(/^www\./, ''); } catch (_) { return ''; } };
+const fixUrl = u => { u = (u || '').trim(); if (!u) return ''; return /^[a-z][a-z0-9+.-]*:/i.test(u) ? u : 'https://' + u; };
+let tiles = [];
 async function dial() {
-  const el = $('#dial'); const seen = new Set(); const tiles = [];
-  const add = (title, url) => { const h = K.host(url); if (!h || seen.has(h) || tiles.length >= 10) return; seen.add(h); tiles.push({ title, url }); };
-  (S.pins || []).forEach(p => add(p.title, p.url));
-  try { const hist = await call('hist.list', '', 400); const agg = {}; for (const x of hist) { const h = K.host(x.url); if (h) (agg[h] = agg[h] || { url: x.url.replace(/^(https?:\/\/[^/]+).*/, '$1/'), v: 0, t: x.title }).v += x.visits; } Object.entries(agg).sort((a, b) => b[1].v - a[1].v).slice(0, 8).forEach(([h, o]) => add(h, o.url)); } catch (_) {}
-  el.innerHTML = tiles.map((t, i) => `<a class="tile" href="${K.esc(t.url)}" style="animation-delay:${.25 + i * .05}s"><div class="ic"><img src="${K.favicon(t.url)}" onerror="this.outerHTML='<b>${K.esc((t.title || '?')[0].toUpperCase())}</b>'"></div><span>${K.esc(t.title)}</span></a>`).join('');
+  const el = $('#dial'); const seen = new Set(); tiles = [];
+  const hidden = new Set(S.dialHidden || []);
+  (S.dialItems || []).forEach((p, i) => { seen.add(hostOf(p.url)); tiles.push({ title: p.title || hostOf(p.url), url: p.url, mine: true, i }); });
+  if (S.dialAuto !== false) {
+    const add = (title, url) => { const h = hostOf(url); if (!h || seen.has(h) || hidden.has(h) || tiles.length >= 10) return; seen.add(h); tiles.push({ title, url, host: h }); };
+    (S.pins || []).forEach(p => add(p.title, p.url));
+    try { const hist = await call('hist.list', '', 400); const agg = {}; for (const x of hist) { const h = hostOf(x.url); if (h) (agg[h] = agg[h] || { url: x.url.replace(/^(https?:\/\/[^/]+).*/, '$1/'), v: 0, t: x.title }).v += x.visits; } Object.entries(agg).sort((a, b) => b[1].v - a[1].v).slice(0, 12).forEach(([h, o]) => add(h, o.url)); } catch (_) {}
+  }
+  el.innerHTML = tiles.map((t, i) => `<div class="tw" data-i="${i}"><a class="tile" href="${K.esc(t.url)}" style="animation-delay:${.25 + i * .05}s"><div class="ic"><img src="${K.favicon(t.url)}" onerror="this.outerHTML='<b>${K.esc((t.title || '?')[0].toUpperCase())}</b>'"></div><span>${K.esc(t.title)}</span></a><button class="mo" title="Edit this shortcut" aria-label="More">&#8943;</button></div>`).join('')
+    + `<div class="tw"><button class="tile add" id="addTile" style="animation-delay:${.25 + tiles.length * .05}s" title="Add a shortcut"><div class="ic"><b>+</b></div><span>Add shortcut</span></button></div>`;
+  el.querySelectorAll('.tw[data-i]').forEach(w => {
+    const t = tiles[+w.dataset.i];
+    const open = e => { e.preventDefault(); e.stopPropagation(); const r = w.getBoundingClientRect(); tileMenu(t, Math.min(r.right - 20, innerWidth - 210), r.top + 28); };
+    w.querySelector('.mo').addEventListener('click', open); w.addEventListener('contextmenu', open);
+  });
+  $('#addTile').onclick = () => editTile(null);
+}
+const closeMenus = () => { $('#tmenu').hidden = true; $('#hmenu').hidden = true; };
+function tileMenu(t, x, y) {
+  const m = $('#tmenu'); const mine = t.mine;
+  m.innerHTML = (mine ? '<button data-a="edit">Edit…</button><button data-a="remove" class="dg">Remove</button>' : '<button data-a="pin">Keep in shortcuts</button><button data-a="edit">Edit…</button><button data-a="hide" class="dg">Hide this suggestion</button>') + '<div class="sp"></div><button data-a="add">Add a new shortcut…</button>';
+  m.style.left = Math.max(8, x) + 'px'; m.style.top = Math.min(y, innerHeight - 190) + 'px'; m.hidden = false;
+  m.querySelectorAll('button').forEach(b => b.onclick = () => {
+    m.hidden = true; const a = b.dataset.a; const items = (S.dialItems || []).slice();
+    if (a === 'edit') editTile(t);
+    else if (a === 'add') editTile(null);
+    else if (a === 'remove') { items.splice(t.i, 1); set({ dialItems: items }); }
+    else if (a === 'pin') { items.push({ id: 'd' + Date.now().toString(36), title: t.title, url: t.url }); set({ dialItems: items }); }
+    else if (a === 'hide') set({ dialHidden: (S.dialHidden || []).concat([t.host]) });
+  });
+}
+const set = patch => call('settings.set', patch);
+function editTile(t) {
+  const d = $('#dlg'); const hiddenN = (S.dialHidden || []).length;
+  d.innerHTML = `<div class="box"><h3>${t ? 'Edit shortcut' : 'Add shortcut'}</h3><label>Name</label><input type="text" id="dn" value="${K.esc(t ? t.title : '')}" placeholder="My site" spellcheck="false"><label>Address</label><input type="text" id="du" value="${K.esc(t ? t.url : '')}" placeholder="example.com" spellcheck="false">
+  <div class="opt"><span>Fill empty spots with my most visited sites</span><input type="checkbox" id="da" ${S.dialAuto !== false ? 'checked' : ''}>${hiddenN ? `<a id="dr">Restore ${hiddenN} hidden</a>` : ''}</div>
+  <div class="btns"><button id="dc">Cancel</button><button class="pri" id="ds">Save</button></div></div>`;
+  d.hidden = false; setTimeout(() => $('#dn').focus(), 30);
+  const close = () => { d.hidden = true; };
+  $('#dc').onclick = close; d.onmousedown = e => { if (e.target === d) close(); };
+  if ($('#dr')) $('#dr').onclick = () => { set({ dialHidden: [] }); close(); };
+  const save = () => {
+    const url = fixUrl($('#du').value); if (!url || url === 'https://') { $('#du').focus(); return; }
+    const title = $('#dn').value.trim() || hostOf(url) || url; const items = (S.dialItems || []).slice();
+    const patch = { dialAuto: $('#da').checked };
+    if (t && t.mine) items[t.i] = Object.assign({}, items[t.i], { title, url });
+    else if (t) { items.push({ id: 'd' + Date.now().toString(36), title, url }); patch.dialHidden = (S.dialHidden || []).concat([t.host]); }   // edited a suggestion → it becomes your own shortcut
+    else items.push({ id: 'd' + Date.now().toString(36), title, url });
+    patch.dialItems = items; set(patch); close();
+  };
+  $('#ds').onclick = save; d.querySelectorAll('input[type=text]').forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') close(); }));
+}
+// ---- hiding the interface, in a few different ways
+const HM = [['keep', 'Hide everything, keep the buttons'], ['clock', 'Keep just the clock'], ['search', 'Keep just the search bar'], ['none', 'Hide everything, even the buttons']];
+const hmode = () => (HM.some(x => x[0] === S.hideMode) ? S.hideMode : 'keep');
+function applyHide(on) {
+  document.body.classList.toggle('hideui', on); document.body.dataset.hm = hmode(); $('#hide').classList.toggle('on', on); closeMenus();
+}
+const toggleHide = () => applyHide(!document.body.classList.contains('hideui'));
+function hideMenu() {
+  const m = $('#hmenu'); if (!m.hidden) { m.hidden = true; return; }
+  m.innerHTML = '<small>When I hide the interface</small>' + HM.map(([k, l]) => `<button data-m="${k}" class="${hmode() === k ? 'cur' : ''}">${hmode() === k ? '&#10003; ' : ''}${l}</button>`).join('');
+  m.hidden = false;
+  m.querySelectorAll('button').forEach(b => b.onclick = () => { S.hideMode = b.dataset.m; set({ hideMode: b.dataset.m }); applyHide(true); });
 }
 function motionOk() { return S.animations !== 'off' && !(S.batterySaver && K.runtime && K.runtime.onBattery); }
 function crossfade(url, cover, video) {
@@ -139,16 +227,18 @@ function fx() { stopFx(); const t = K.particleType(); stopFx = Particles.start($
   $('#eng').textContent = (st.engines[S.searchEngine] || {}).name || '';
   tick(); setInterval(tick, 10000); dial(); loadBg(); fx();
   document.addEventListener('k:applied', fx);
-  document.addEventListener('k:settings', e => { S = e.detail; $('#eng').textContent = (st.engines[S.searchEngine] || {}).name || ''; dial(); });
+  document.addEventListener('k:settings', e => { S = e.detail; document.body.dataset.hm = hmode(); $('#eng').textContent = (st.engines[S.searchEngine] || {}).name || ''; dial(); });
   kitsune.on('kirokuLive', () => loadCW());
   kitsune.on('kiroku', async () => { if (!list.length) return loadBg(); try { const fresh = await call('kiroku.bg'); if (fresh.length !== list.length && !fresh.every(f => list.some(x => x.id === f.id))) return loadBg(); for (const f of fresh) { const o = list.find(x => x.id === f.id); if (o) { o.hd = f.hd; o.cover = f.cover; } } } catch (_) { loadBg(); } });
   $('#sf').addEventListener('submit', e => { e.preventDefault(); const v = $('#q').value.trim(); if (v) call('cmd', 'navigate', v); });
-  $('#next').onclick = () => show(idx + 1); $('#prev').onclick = () => show(idx - 1); $('#bgs').innerHTML = I.palette; $('#bgs').onclick = () => { location.href = 'kitsune://backgrounds/'; }; $('#hide').onclick = () => document.body.classList.toggle('hideui');
+  $('#next').onclick = () => show(idx + 1); $('#prev').onclick = () => show(idx - 1); $('#bgs').innerHTML = I.palette; $('#bgs').onclick = () => { location.href = 'kitsune://backgrounds/'; }; $('#hide').onclick = toggleHide; $('#hide').addEventListener('contextmenu', e => { e.preventDefault(); hideMenu(); }); $('#hmode').innerHTML = I.down; $('#hmode').onclick = hideMenu; document.body.dataset.hm = hmode();
+  document.addEventListener('mousedown', e => { if (!e.target.closest('#tmenu') && !e.target.closest('#hmenu') && !e.target.closest('#hmode')) closeMenus(); });
+  document.addEventListener('dblclick', e => { if (e.target === document.body || e.target.id === 'scrim' || e.target.id === 'ui' || e.target.id === 'fx' || e.target.classList.contains('layer')) toggleHide(); });
   document.addEventListener('visibilitychange', () => { document.querySelectorAll('.layer video').forEach(v => document.hidden || !motionOk() ? v.pause() : v.play().catch(() => {})); });
   addEventListener('keydown', e => {
     if (document.activeElement === $('#q') && e.key !== 'Escape') return;
     if (e.key === 'ArrowRight') show(idx + 1); if (e.key === 'ArrowLeft') show(idx - 1);
-    if (e.key.toLowerCase() === 'h') document.body.classList.toggle('hideui');
+    if (e.key.toLowerCase() === 'h') toggleHide(); if (e.key === 'Escape') { closeMenus(); if ($('#dlg') && !$('#dlg').hidden) $('#dlg').hidden = true; }
     if (e.key === ' ') { paused = !paused; if (!paused) show(idx); else clearTimeout(timer); e.preventDefault(); }
   });
 })();

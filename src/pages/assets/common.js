@@ -21,7 +21,7 @@
     const s = K.settings || {}; if (!K.features.particles || K.effectiveAnim() !== 'full') return 'none';
     if (s.particles && s.particles !== 'auto') return s.particles;
     const cp = String(s.theme).startsWith('custom:') ? (s.customThemes || []).find(t => 'custom:' + t.id === s.theme) : null; if (cp && cp.particles) return cp.particles;
-    return { sakura: 'sakura', neon: 'rain', umbra: 'firefly', aqua: 'firefly', crimson: 'ember', dusk: 'ember', hanami: 'sakura', rain: 'rain' }[s.theme] || 'sakura';
+    return { sakura: 'sakura', neon: 'rain', umbra: 'firefly', aqua: 'bubbles', crimson: 'ember', dusk: 'ember', hanami: 'sakura', rain: 'rain', aurora: 'aurora', matcha: 'leaves', kitsune: 'lantern', cosmos: 'stars', mono: 'snow' }[s.theme] || 'sakura';
   };
 
   K.effectiveSfx = function () {

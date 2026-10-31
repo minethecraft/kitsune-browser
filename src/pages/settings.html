@@ -30,7 +30,7 @@ const $ = s => document.querySelector(s), call = (n, ...a) => kitsune.call(n, ..
 let S, F, st, tab = (location.hash || '#appearance').slice(1);
 const set = (k, v) => call('settings.set', { [k]: v });
 const toast = t => { const e = $('#toast'); e.textContent = t; e.className = 'on'; clearTimeout(toast.t); toast.t = setTimeout(() => e.className = '', 2200); };
-const THEMES = { sakura: ['Sakura Dawn', '#2b1830', '#ff8fb8', '#ffc86b'], neon: ['Neon Shibuya', '#0e1027', '#3df0ff', '#ff3df0'], umbra: ['Umbra', '#0b0912', '#a77bff', '#5b8cff'], aqua: ['Aqua Gel', '#0c2233', '#4fd1ff', '#7af5c8'], crimson: ['Crimson Throne', '#1d0b10', '#ff4d5e', '#ffb84d'], dusk: ['Kitsune Dusk', '#1d1630', '#ff9d4d', '#ff6fa5'], hanami: ['Hanami Light', '#ffeff5', '#ff6fa5', '#ffa94d'], rain: ['Rainy Cyber', '#0b1418', '#6cf5c2', '#57b9ff'] };
+const THEMES = { sakura: ['Sakura Dawn', '#2b1830', '#ff8fb8', '#ffc86b'], neon: ['Neon Shibuya', '#0e1027', '#3df0ff', '#ff3df0'], umbra: ['Umbra', '#0b0912', '#a77bff', '#5b8cff'], aqua: ['Aqua Gel', '#0c2233', '#4fd1ff', '#7af5c8'], crimson: ['Crimson Throne', '#1d0b10', '#ff4d5e', '#ffb84d'], dusk: ['Kitsune Dusk', '#1d1630', '#ff9d4d', '#ff6fa5'], hanami: ['Hanami Light', '#ffeff5', '#ff6fa5', '#ffa94d'], rain: ['Rainy Cyber', '#0b1418', '#6cf5c2', '#57b9ff'], aurora: ['Aurora Veil', '#081a1f', '#5cffc4', '#9b6bff'], matcha: ['Matcha Garden', '#14201a', '#a8e063', '#f2d479'], kitsune: ['Fox Fire', '#1f1008', '#ff7a1a', '#ffc14d'], cosmos: ['Cosmos', '#070718', '#7aa2ff', '#ff7ad9'], mono: ['Graphite', '#121212', '#e8e8e8', '#8c8c8c'] };
 const row = (t, d, ctl) => `<div class="row"><div class="grow"><div class="t">${t}</div>${d ? `<div class="d">${d}</div>` : ''}</div>${ctl}</div>`;
 const tog = (k, on) => `<div class="tg ${on ? 'on' : ''}" data-tg="${k}"></div>`;
 const sel = (k, opts, cur) => `<select data-sel="${k}">${opts.map(([v, l]) => `<option value="${v}" ${v === cur ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
@@ -42,7 +42,7 @@ const SECTIONS = {
     <h2>Backgrounds & sounds</h2><div class="card">${row('Backgrounds', 'Pick more anime, add your own images and videos, browse the community', '<button class="btn" id="bgOpen">Open…</button>')}${row('Interaction sounds', 'Clicks, tabs and downloads. Make your own pack in Theme Studio.', sel('sfxpack', [['off', 'Off'], ['soft', 'Soft pop'], ['chime', 'Chimes'], ['arcade', 'Arcade'], ['drop', 'Water drops'], ['katana', 'Katana'], ['retro', 'Retro']], (S.sfx || {}).pack || 'off'))}${row('Sound volume', '', `<input type="range" min="0" max="100" value="${Math.round(((S.sfx || {}).volume == null ? .5 : S.sfx.volume) * 100)}" id="sfxvol" style="width:160px">`)}</div>
     <h2>Motion</h2><div class="card">${row('Animation level', 'Reduced keeps transitions, drops looping effects. Off disables everything.', seg('animations', [['full', 'Full'], ['reduced', 'Reduced'], ['off', 'Off']], S.animations))}
     ${row('Battery saver', 'Automatically reduce animations when unplugged', tog('batterySaver', S.batterySaver))}
-    ${F.particles ? row('Particles', 'Falling petals, embers, snow, rain or fireflies on the new tab page', sel('particles', [['auto', 'Match theme'], ['sakura', 'Sakura petals'], ['ember', 'Embers'], ['snow', 'Snow'], ['rain', 'Neon rain'], ['firefly', 'Fireflies'], ['none', 'None']], S.particles)) : ''}</div>
+    ${F.particles ? row('Particles', 'Petals, leaves, embers, lanterns, snow, rain, fireflies, stars, bubbles or aurora on the new tab page and the tab bar', sel('particles', [['auto', 'Match theme'], ['sakura', 'Sakura petals'], ['leaves', 'Falling leaves'], ['ember', 'Embers'], ['lantern', 'Floating lanterns'], ['snow', 'Snow'], ['rain', 'Rain with ripples'], ['firefly', 'Fireflies'], ['stars', 'Starfield + shooting stars'], ['bubbles', 'Bubbles'], ['aurora', 'Aurora glow'], ['none', 'None']], S.particles)) : ''}</div>
     <h2>Anime backgrounds</h2><div class="card">${row('Use my Kiroku library', 'New tab backgrounds come from the anime you watched or are watching', tog('bgKiroku', S.bgKiroku))}
     ${row('Adaptive accent colour', 'Tint the browser with the colours of the current background', tog('adaptiveAccent', S.adaptiveAccent))}
     ${row('Seconds per background', '', `<input type="number" min="8" max="600" value="${S.bgInterval}" data-num="bgInterval" style="width:90px">`)}
@@ -57,12 +57,13 @@ const SECTIONS = {
     ${row('Your name', 'Shown in the new tab greeting', `<input type="text" data-txt="displayName" value="${K.esc(S.displayName)}" style="width:200px" placeholder="optional">`)}</div>
     <h2>Search</h2><div class="card">${row('Default search engine', 'Shortcuts: <b>yt</b> youtube · <b>gh</b> github · <b>w</b> wikipedia · <b>al</b> anilist · <b>mal</b> myanimelist · <b>r</b> reddit · <b>mr</b> modrinth', sel('searchEngine', Object.entries(st.engines).map(([k, v]) => [k, v.name]), S.searchEngine))}</div>
     <h2>Default browser</h2><div class="card">${row('Make Kitsune your default browser', '<span id="defst"></span>', '<button class="btn primary" id="mkdef">Set as default</button>')}</div>
-    <h2>Downloads</h2><div class="card">${row('Save files to', K.esc(S.downloadDir || 'Your Downloads folder'), '<button class="btn" id="dlDir">Change…</button>')}</div>`],
+    <h2>Downloads</h2><div class="card">${row('Save files to', K.esc(S.downloadDir || 'Your Downloads folder'), '<button class="btn" id="dlDir">Change…</button>')}${row('Faster downloads', 'Big files are fetched over several connections at once when the site allows it (usually 3–8× quicker)', tog('fastDownloads', S.fastDownloads !== false))}</div>`],
 
   privacy: ['Privacy & Security', () => `<h2>Tracking protection</h2><div class="card">${row('Blocker level', 'Standard blocks known ad & tracker hosts. Strict also matches common ad URL patterns (may break some sites).', seg('blocker', [['off', 'Off'], ['standard', 'Standard'], ['strict', 'Strict']], S.blocker))}
     ${row('Engine status', '<span id="blkst">Checking…</span>', '<span></span>')}
     ${row('HTTPS-only mode', 'Upgrade http:// pages to https:// and fall back only if the site has no secure version', tog('httpsOnly', S.httpsOnly))}
-    ${row('Send Global Privacy Control & Do Not Track', '', tog('sendGPC', S.sendGPC))}</div>
+    ${row('Send Global Privacy Control & Do Not Track', '', tog('sendGPC', S.sendGPC))}
+    ${row('Share anonymous usage counts', 'Helps the Kitsune site show how many people use it: a random install id, version, OS, how long it was open, and how many tabs were opened. Never your sites, searches or bookmarks.', tog('telemetry', S.telemetry !== false))}</div>
     <h2>Clear data</h2><div class="card"><div class="chips" style="padding-top:14px"><label class="chip"><input type="checkbox" id="c-cookies" checked> Cookies & site data</label><label class="chip"><input type="checkbox" id="c-cache" checked> Cache</label><label class="chip"><input type="checkbox" id="c-history"> History</label><label class="chip"><input type="checkbox" id="c-downloads"> Download list</label><label class="chip"><input type="checkbox" id="c-permissions"> Site permissions</label></div>
     <div class="row"><div class="grow d">Clearing cookies signs you out of websites in every container.</div><button class="btn danger" id="clear">Clear selected</button></div></div>`],
 
@@ -80,8 +81,9 @@ const SECTIONS = {
     <div class="row"><input type="text" id="pn" placeholder="Title" style="width:140px"><input type="text" id="pu" placeholder="https://…" style="flex:1"><button class="btn" id="addp">Pin</button></div></div>`],
 
   extensions: ['Extensions', () => `<h2>Chrome extensions</h2><div class="card">${F.extensions ? `<div id="xl">${(S.extensions||[]).map(x => `<div class="row"><div class="grow"><div class="t">${K.esc(x.name)} <span class="pill">${K.esc(x.version||'')}</span></div><div class="d">${x.mv === 3 ? 'Manifest V3' : 'Manifest V2'}</div></div>${x.options ? `<button class="btn" data-xopt="${x.id}">Options</button>` : ''}${tog('x:' + x.id, x.enabled !== false)}<button class="x" data-delx="${x.id}">✕</button></div>`).join('') || '<div class="row"><span class="d">No extensions installed.</span></div>'}</div>
+    <div class="row"><div class="grow"><div class="t">Browse extensions</div><div class="d">Pick from popular extensions and install them in one click.</div></div><button class="btn primary" id="xb">Open Extensions page</button></div>
     <div class="row"><input type="text" id="xs" placeholder="Chrome Web Store link or extension ID" style="flex:1"><button class="btn primary" id="xi">Install</button></div>
-    <div class="row"><div class="grow d">Installs straight from the Chrome Web Store. Electron supports a subset of the extension APIs, so content-script style extensions (dark mode, SponsorBlock-style, translators, password-manager autofill basics) work best; some will not load.</div><button class="btn" id="lx">Load unpacked…</button></div>` : '<div class="empty">Extensions are part of the Full edition.</div>'}</div>`],
+    <div class="row"><div class="grow d">Installs straight from the Chrome Web Store. Kitsune supports a subset of the Chrome extension APIs, so content-script style extensions (dark mode, SponsorBlock-style, translators, password-manager autofill basics) work best; some will not load.</div><button class="btn" id="lx">Load unpacked…</button></div>` : '<div class="empty">Extensions are part of the Full edition.</div>'}</div>`],
 
   account: ['Account & Sync', () => `<h2>Kitsune account</h2><div class="card" id="acct">Loading…</div>
     <h2>What to sync</h2><div class="card">${[['bookmarks','Bookmarks'],['settings','Settings'],['pins','Sidebar pins & containers'],['themes','Custom themes'],['history','History (last 1,500 pages)'],['extensions','Extensions (re-installed from the Web Store)']].map(([k,l]) => row(l,'',tog('sync:'+k, !!(S.syncWhat||{})[k]))).join('')}
@@ -134,6 +136,7 @@ function bind() {
   document.querySelectorAll('[data-tg^="sync:"]').forEach(t => t.onclick = () => set('syncWhat', Object.assign({}, S.syncWhat, { [t.dataset.tg.slice(5)]: !S.syncWhat[t.dataset.tg.slice(5)] })));
   document.querySelectorAll('[data-tg="vpn:on"]').forEach(t => t.onclick = async () => { const r = await call('vpn.toggle', !S.vpnOn); if (r && r.error) toast(r.error); });
   document.querySelectorAll('[data-xopt]').forEach(b => b.onclick = () => call('ext.options', b.dataset.xopt));
+  on('#xb', () => { location.href = 'kitsune://extensions/'; });
   on('#xi', async () => { const v = $('#xs').value.trim(); if (!v) return; toast('Installing…'); const r = await call('ext.install', v); toast(r.error || ('Installed ' + r.ok + (r.mv3 ? ' (MV3: some APIs unavailable)' : ''))); });
   on('#thImp', async () => { const r = await call('theme.import'); if (r) toast(r.error || 'Imported ' + r.ok); });
   on('#thNew', () => { location.href = 'kitsune://studio/'; }); on('#bgOpen', () => { location.href = 'kitsune://backgrounds/'; });
@@ -149,7 +152,7 @@ function bind() {
   if (tab === 'general') defstat();
   if (tab === 'data' || tab === 'about' || tab === 'performance') call('app.info').then(i => {
     const ud = $('#ud'); if (ud) ud.textContent = i.userData;
-    const ab = $('#aboutc'); if (ab) ab.innerHTML = [['Edition', i.edition === 'lite' ? 'Lite (portable)' : 'Full'], ['Version', i.version], ['Chromium', i.chromium], ['Electron', i.electron], ['Platform', i.platform]].map(x => `<div class="row"><div class="grow t">${x[0]}</div><div class="d">${K.esc(x[1])}</div></div>`).join('');
+    const ab = $('#aboutc'); if (ab) ab.innerHTML = [['Edition', i.edition === 'lite' ? 'Lite (portable)' : 'Full'], ['Version', i.version], ['Chromium', i.chromium], ['Platform', i.platform]].map(x => `<div class="row"><div class="grow t">${x[0]}</div><div class="d">${K.esc(x[1])}</div></div>`).join('');
     const pf = $('#perf'); if (pf) pf.innerHTML = [['Open tabs', i.stats.tabs], ['Sleeping tabs', i.stats.sleeping], ['Windows', i.stats.windows], ['Tracker hosts blocked', i.blocklist]].map(x => `<div class="row"><div class="grow t">${x[0]}</div><div class="d">${x[1]}</div></div>`).join('');
   });
 }

@@ -1,0 +1,88 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Extensions</title>
+<link rel="stylesheet" href="kitsune://assets/themes.css"><link rel="stylesheet" href="kitsune://assets/page.css">
+<style>
+.search { display: flex; gap: 10px; margin: 6px 0 4px; } .search input { flex: 1; font-size: 15px; padding: 12px 16px; border-radius: 999px; }
+.cats { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 6px; } .cats button { border: 1px solid var(--line); background: var(--bg2); color: var(--fg); padding: 6px 15px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 13px; transition: background .15s, transform .15s; } .cats button:hover { transform: translateY(-1px); } .cats button.cur { background: var(--accent); color: var(--accent-fg); border-color: transparent; font-weight: 700; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; margin-top: 10px; }
+.ext { padding: 16px; border-radius: 18px; background: color-mix(in srgb, var(--bg2) 90%, transparent); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; transition: transform .22s cubic-bezier(.2,.9,.3,1.3), border-color .2s, box-shadow .2s; animation: rise .45s both; }
+.ext:hover { transform: translateY(-4px); border-color: var(--accent); box-shadow: 0 14px 34px rgba(0,0,0,.28), 0 0 0 3px var(--glow); }
+.ext .top { display: flex; align-items: center; gap: 12px; } .ext .ico { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-weight: 800; font-size: 18px; color: #fff; flex: none; }
+.ext b { font-size: 15px; } .ext small { color: var(--muted); display: block; font-size: 11.5px; } .ext p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; flex: 1; }
+.ext .act { display: flex; gap: 8px; align-items: center; } .btn { cursor: pointer; }
+.sec { display: flex; align-items: baseline; gap: 12px; } .sec a { margin-left: auto; font-size: 13px; }
+#msg { position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%); background: var(--bg3); border: 1px solid var(--accent); padding: 10px 20px; border-radius: 999px; box-shadow: 0 10px 30px rgba(0,0,0,.4); display: none; z-index: 9; max-width: 80vw; } #msg.on { display: block; animation: rise .25s both; }
+.note { color: var(--muted); font-size: 12.5px; margin: 8px 4px 0; }
+</style></head>
+<body><div class="wrap">
+  <h1><span id="logo"></span> Extensions</h1><p class="lead">Browse and install Chrome extensions in one click. They come straight from the Chrome Web Store.</p>
+  <div class="search"><input type="text" id="q" placeholder="Search the list, or paste a Chrome Web Store link / extension ID to install it" spellcheck="false"><button class="btn primary" id="go">Install</button></div>
+  <div class="cats" id="cats"></div>
+  <h2 id="hInst" hidden>Installed</h2><div class="card" id="inst" hidden></div>
+  <div class="sec"><h2 id="hCat">Popular</h2><a id="store" class="link">Browse the full Chrome Web Store &#8599;</a></div>
+  <div class="grid" id="grid"></div>
+  <p class="note">Kitsune supports most Chrome extensions that work on web pages (blockers, dark mode, video helpers, userscript managers). Extensions that rely on browser-specific features, such as native-app messaging or some sync features, may install but not fully work.</p>
+</div><div id="msg"></div>
+<script src="kitsune://assets/icons.js"></script><script src="kitsune://assets/sfx.js"></script><script src="kitsune://assets/common.js"></script>
+<script>
+const $ = s => document.querySelector(s), call = (n, ...a) => kitsune.call(n, ...a);
+// every ID here was checked against the Web Store's download endpoint
+const CATALOG = [
+  ['ddkjiahejlhfcafbddmgiahcphecmpfh', 'uBlock Origin Lite', 'Privacy', 'Fast, lightweight ad and tracker blocker.', '#c0392b'],
+  ['pkehgijcmpdhfbdbbnkijodmdjhbjlgp', 'Privacy Badger', 'Privacy', 'Learns and blocks trackers that follow you around the web.', '#e67e22'],
+  ['ldpochfccmkkmhdbclfhpagapcfdljkj', 'Decentraleyes', 'Privacy', 'Serves common libraries locally so trackers do not see you load them.', '#16a085'],
+  ['eimadpbcbfnmbkopoojfekhnkhdbieeh', 'Dark Reader', 'Look & feel', 'Dark mode for every website, with adjustable brightness and contrast.', '#2c3e50'],
+  ['clngdbkpkpeebahjckkjfobafhncgmne', 'Stylus', 'Look & feel', 'Restyle any site with your own CSS themes.', '#8e44ad'],
+  ['mnjggcdmjocbbbhaepdhchncahnbgone', 'SponsorBlock', 'Video', 'Skip sponsor segments, intros and reminders in YouTube videos.', '#00a8a8'],
+  ['ponfpcnoihfmfllpaingbgckeeldkhle', 'Enhancer for YouTube', 'Video', 'Playback speed, volume boost, cinema mode and more for YouTube.', '#d63031'],
+  ['jpbjcnkcffbooppibceonlgknpkniiff', 'Global Speed', 'Video', 'Change the speed of any video or audio on any site.', '#0984e3'],
+  ['dhdgffkkebhmkfjojejmpbldmpobfkfo', 'Tampermonkey', 'Power tools', 'The popular userscript manager. Run scripts that tweak websites.', '#2d3436'],
+  ['dbepggeogbaibhgnhhndojpepiihcmeb', 'Vimium', 'Power tools', 'Browse the web from the keyboard with Vim-style shortcuts.', '#6c5ce7'],
+  ['oldceeleldhonbafppcapldpdifcinji', 'LanguageTool', 'Writing', 'Grammar, spelling and style checker for text fields.', '#27ae60'],
+  ['bhlhnicpbhignbdhedgjhgdocnmhomnp', 'ColorZilla', 'Developer', 'Eyedropper, color picker and gradient generator.', '#e84393'],
+  ['fmkadmapgofadopljbjfkapdkoienihi', 'React Developer Tools', 'Developer', 'Inspect React component trees in the developer tools.', '#00b4d8'],
+  ['blpcfgokakmgnkcojhhkbfbldkacnbeo', 'Lighthouse', 'Developer', 'Audit pages for performance, accessibility and SEO.', '#f39c12']
+];
+let S, F, cat = 'All', term = '', busy = new Set();
+const msg = t => { const e = $('#msg'); e.textContent = t; e.className = 'on'; clearTimeout(msg.t); msg.t = setTimeout(() => e.className = '', 3200); };
+const isId = v => /[a-p]{32}/.test(v);
+const installed = () => S.extensions || [];
+const has = id => installed().some(x => x.storeId === id || x.id === id);
+
+function renderInstalled() {
+  const l = installed(); $('#hInst').hidden = $('#inst').hidden = !l.length;
+  $('#inst').innerHTML = l.map(x => `<div class="row"><div class="grow"><div class="t">${K.esc(x.name)} <span class="pill">${K.esc(x.version || '')}</span></div><div class="d">${x.mv === 3 ? 'Manifest V3' : 'Manifest V2'}</div></div>${x.options ? `<button class="btn" data-opt="${x.id}">Options</button>` : ''}<div class="tg ${x.enabled !== false ? 'on' : ''}" data-en="${x.id}" title="Enable or disable"></div><button class="x" data-rm="${x.id}" title="Remove">&#10005;</button></div>`).join('');
+  $('#inst').querySelectorAll('[data-opt]').forEach(b => b.onclick = () => call('ext.options', b.dataset.opt));
+  $('#inst').querySelectorAll('[data-en]').forEach(b => b.onclick = async () => { await call('ext.enable', b.dataset.en, !b.classList.contains('on')); });
+  $('#inst').querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => { if (confirm('Remove this extension?')) { await call('ext.remove', b.dataset.rm); msg('Removed'); } });
+}
+function renderGrid() {
+  const cats = ['All'].concat([...new Set(CATALOG.map(c => c[2]))]);
+  $('#cats').innerHTML = cats.map(c => `<button class="${c === cat ? 'cur' : ''}" data-c="${c}">${c}</button>`).join('');
+  $('#cats').querySelectorAll('button').forEach(b => b.onclick = () => { cat = b.dataset.c; renderGrid(); });
+  const t = term.toLowerCase();
+  const list = CATALOG.filter(c => (cat === 'All' || c[2] === cat) && (!t || isId(term) ? true : (c[1] + ' ' + c[3] + ' ' + c[2]).toLowerCase().includes(t)));
+  $('#hCat').textContent = t && !isId(term) ? `Results for “${term}”` : cat === 'All' ? 'Popular' : cat;
+  $('#grid').innerHTML = list.map((c, i) => `<div class="ext" style="animation-delay:${i * 0.03}s"><div class="top"><div class="ico" style="background:${c[4]}">${K.esc(c[1][0])}</div><div><b>${K.esc(c[1])}</b><small>${c[2]}</small></div></div><p>${K.esc(c[3])}</p><div class="act">${has(c[0]) ? '<span class="pill">Installed</span>' : `<button class="btn primary" data-i="${c[0]}" ${busy.has(c[0]) ? 'disabled' : ''}>${busy.has(c[0]) ? 'Installing…' : 'Add to Kitsune'}</button>`}<a class="link" data-v="${c[0]}" style="margin-left:auto;font-size:12.5px">Details</a></div></div>`).join('')
+    || `<div class="empty" style="grid-column:1/-1">Nothing in the list matches. <a class="link" id="webs">Search the Chrome Web Store for “${K.esc(term)}”</a></div>`;
+  $('#grid').querySelectorAll('[data-i]').forEach(b => b.onclick = () => install(b.dataset.i));
+  $('#grid').querySelectorAll('[data-v]').forEach(b => b.onclick = () => call('cmd', 'newTab', 'https://chromewebstore.google.com/detail/' + b.dataset.v));
+  const w = $('#webs'); if (w) w.onclick = () => call('cmd', 'newTab', 'https://chromewebstore.google.com/search/' + encodeURIComponent(term));
+}
+async function install(v) {
+  const id = (v.match(/[a-p]{32}/) || [])[0] || v; busy.add(id); renderGrid(); msg('Installing…');
+  let r; try { r = await call('ext.install', v); } catch (e) { r = { error: 'Install failed.' }; }
+  busy.delete(id); if (r && r.error) msg(r.error); else { msg('Installed ' + r.ok + (r.mv3 ? ' (Manifest V3: some APIs unavailable)' : '')); if (window.SFX) SFX.play('success'); }
+  const st = await call('state'); S = st.settings; renderInstalled(); renderGrid();
+}
+(async () => {
+  const st = await K.init(); S = st.settings; F = st.features; $('#logo').innerHTML = I.pin;
+  if (!F.extensions) { document.querySelector('.wrap').innerHTML = '<h1>Extensions</h1><div class="empty">Extensions are part of the Full edition.</div>'; return; }
+  document.addEventListener('k:settings', e => { S = e.detail; renderInstalled(); renderGrid(); });
+  $('#q').addEventListener('input', () => { term = $('#q').value.trim(); renderGrid(); });
+  $('#q').addEventListener('keydown', e => { if (e.key === 'Enter') $('#go').click(); });
+  $('#go').onclick = () => { const v = $('#q').value.trim(); if (!v) return; if (isId(v)) install(v); else call('cmd', 'newTab', 'https://chromewebstore.google.com/search/' + encodeURIComponent(v)); };
+  $('#store').onclick = () => call('cmd', 'newTab', 'https://chromewebstore.google.com/category/extensions');
+  renderInstalled(); renderGrid();
+})();
+</script></body></html>

@@ -20,7 +20,7 @@
 <script src="kitsune://assets/icons.js"></script><script src="kitsune://assets/sfx.js"></script><script src="kitsune://assets/common.js"></script>
 <script>
 const $ = s => document.querySelector(s), call = (n, ...a) => kitsune.call(n, ...a);
-const THEMES = { sakura: ['Sakura Dawn', '#2b1830', '#ff8fb8', '#ffc86b'], neon: ['Neon Shibuya', '#0e1027', '#3df0ff', '#ff3df0'], umbra: ['Umbra', '#0b0912', '#a77bff', '#5b8cff'], aqua: ['Aqua Gel', '#0c2233', '#4fd1ff', '#7af5c8'], crimson: ['Crimson Throne', '#1d0b10', '#ff4d5e', '#ffb84d'], dusk: ['Kitsune Dusk', '#1d1630', '#ff9d4d', '#ff6fa5'], hanami: ['Hanami Light', '#ffeff5', '#ff6fa5', '#ffa94d'], rain: ['Rainy Cyber', '#0b1418', '#6cf5c2', '#57b9ff'] };
+const THEMES = { sakura: ['Sakura Dawn', '#2b1830', '#ff8fb8', '#ffc86b'], neon: ['Neon Shibuya', '#0e1027', '#3df0ff', '#ff3df0'], umbra: ['Umbra', '#0b0912', '#a77bff', '#5b8cff'], aqua: ['Aqua Gel', '#0c2233', '#4fd1ff', '#7af5c8'], crimson: ['Crimson Throne', '#1d0b10', '#ff4d5e', '#ffb84d'], dusk: ['Kitsune Dusk', '#1d1630', '#ff9d4d', '#ff6fa5'], hanami: ['Hanami Light', '#ffeff5', '#ff6fa5', '#ffa94d'], rain: ['Rainy Cyber', '#0b1418', '#6cf5c2', '#57b9ff'], aurora: ['Aurora Veil', '#081a1f', '#5cffc4', '#9b6bff'], matcha: ['Matcha Garden', '#14201a', '#a8e063', '#f2d479'], kitsune: ['Fox Fire', '#1f1008', '#ff7a1a', '#ffc14d'], cosmos: ['Cosmos', '#070718', '#7aa2ff', '#ff7ad9'], mono: ['Graphite', '#121212', '#e8e8e8', '#8c8c8c'] };
 let S, F, i = 0, imp = [], acct = {}, picks = {};
 const set = (k, v) => call('settings.set', { [k]: v });
 const toast = t => { const e = $('#toast'); e.textContent = t; e.className = 'on'; clearTimeout(toast.t); toast.t = setTimeout(() => e.className = '', 2500); };

@@ -8,6 +8,6 @@
 <script>
 (async () => { await K.init(); const i = await kitsune.call('app.info'); document.getElementById('logo').innerHTML = I.fox.replace('width="28" height="28"', 'width="120" height="120"');
 document.getElementById('ed').textContent = i.edition === 'lite' ? 'Lite' : 'Full'; document.getElementById('v').textContent = 'Version ' + i.version + ' · light, animated, anime-themed';
-const r = [['Chromium', i.chromium], ['Electron', i.electron], ['Platform', i.platform], ['Open tabs', `${i.stats.tabs} (${i.stats.sleeping} sleeping) in ${i.stats.windows} window(s)`], ['Tracker blocklist', i.blocklist + ' hosts'], ['Profile folder', i.userData]];
+const r = [['Chromium', i.chromium], ['Platform', i.platform], ['Open tabs', `${i.stats.tabs} (${i.stats.sleeping} sleeping) in ${i.stats.windows} window(s)`], ['Tracker blocklist', i.blocklist + ' hosts'], ['Profile folder', i.userData]];
 document.getElementById('rows').innerHTML = r.map(x => `<div class="row"><div class="grow t">${x[0]}</div><div class="d" style="max-width:60%;text-align:right;word-break:break-all">${K.esc(x[1])}</div></div>`).join(''); })();
 </script></body></html>
